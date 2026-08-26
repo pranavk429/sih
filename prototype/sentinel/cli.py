@@ -357,6 +357,17 @@ def cmd_run(args, cfg: Config) -> int:
     return 0
 
 
+def cmd_serve(args, cfg: Config) -> int:
+    from sentinel.server.app import serve
+
+    host = args.host or cfg.server.host
+    port = args.port or cfg.server.port
+    print("loading models (once, so the demo has no pause in the middle)...")
+    print(f"\n  Sentinel UI:  http://{host}:{port}\n")
+    serve(cfg, host=host, port=port, with_asr=not args.no_asr)
+    return 0
+
+
 def cmd_verify(args, cfg: Config) -> int:
     from sentinel.evidence.log import verify
 
@@ -422,6 +433,13 @@ def build_parser() -> argparse.ArgumentParser:
                        help="skip transcription; scripted overlay still fires")
     p_run.add_argument("--no-colour", action="store_true")
     p_run.set_defaults(func=cmd_run)
+
+    p_serve = sub.add_parser("serve", help="run the web UI")
+    p_serve.add_argument("--host", default=None)
+    p_serve.add_argument("--port", type=int, default=None)
+    p_serve.add_argument("--no-asr", action="store_true",
+                         help="skip transcription; scripted overlay still fires")
+    p_serve.set_defaults(func=cmd_serve)
 
     p_verify = sub.add_parser("verify", help="check an evidence log's hash chain")
     p_verify.add_argument("--log", default=None, help="defaults to the newest log")
