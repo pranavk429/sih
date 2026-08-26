@@ -114,10 +114,13 @@ class ScriptedUtterance:
 
 @dataclass(frozen=True)
 class TriggerConfig:
-    # Stage 2: cosine similarity to a canonical intent above this fires.
-    semantic_threshold: float = 0.55
-    # A stage-1 lexical hit still needs stage 2 not to actively contradict it.
-    lexical_confirm_floor: float = 0.30
+    # Stage 2 fires on MARGIN, not raw similarity: how much closer the utterance
+    # is to a fraud intent than to a benign anchor. Raw similarity does not
+    # separate the classes -- see trigger/engine.py and config.yaml.
+    semantic_margin: float = 0.05
+    # A stage-1 keyword hit fires only if the sentence is at least as close to a
+    # fraud intent as to normal call content.
+    lexical_confirm_floor: float = 0.0
     # Utterances shorter than this are too weak a signal to judge semantically.
     min_words: int = 3
     scripted_overlay: Tuple[ScriptedUtterance, ...] = ()

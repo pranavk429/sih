@@ -162,6 +162,10 @@ class TriggerEvent:
     intent: str
     similarity: float
     stage: str
+    # How much closer this sentence is to a fraud intent than to normal call
+    # content. This, not `similarity`, is what the decision is made on -- raw
+    # similarity does not separate the two classes. See trigger/engine.py.
+    margin: float = 0.0
     matched_terms: Tuple[str, ...] = ()
 
     def to_json(self) -> Dict[str, Any]:
@@ -171,6 +175,7 @@ class TriggerEvent:
             "utterance": self.utterance.to_json(),
             "intent": self.intent,
             "similarity": round(float(self.similarity), 4),
+            "margin": round(float(self.margin), 4),
             "stage": self.stage,
             "matched_terms": list(self.matched_terms),
             "scripted": self.utterance.scripted,

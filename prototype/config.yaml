@@ -61,8 +61,35 @@ models:
   asr_cache_dir: artifacts/models/asr
 
 trigger:
-  semantic_threshold: 0.55
-  lexical_confirm_floor: 0.30
+  # --- both numbers are MARGINS, not similarities. ---
+  #
+  # Raw cosine similarity to the intent sentences does not work. Measured on
+  # MiniLM with this intent set:
+  #     high-risk paraphrases   0.44 - 0.65
+  #     ordinary banking talk   0.25 - 0.61
+  # The ranges overlap; no threshold exists. A general-purpose encoder measures
+  # topical relatedness, and everything on a banking call is about banking.
+  #
+  # So stage 2 scores the difference instead:
+  #     margin = sim(nearest fraud intent) - sim(nearest benign anchor)
+  # Measured over the curated set:
+  #     15 clear positives    +0.28 to +0.73
+  #     4 hard paraphrases    +0.08 to +0.22
+  #     15 negatives          -0.59 to -0.01
+  # and over 12 HELD-OUT negatives never used for tuning: -0.30 to +0.15.
+  #
+  # 0.05 keeps every positive, every paraphrase we claim to catch, and all 15
+  # curated negatives. It misfires on 1 of the 12 held-out sentences — that one
+  # is named in intents.py KNOWN_FALSE_POSITIVES rather than tuned away.
+  semantic_margin: 0.05
+  #
+  # A stage-1 keyword hit needs less semantic evidence, because the keyword is
+  # itself evidence — but it still must not be closer to normal call content
+  # than to fraud. This is the line that kills "I'll transfer you to the other
+  # line" (keyword hit, margin -0.10).
+  lexical_confirm_floor: 0.0
+  #
+  # A bare word is not an instruction.
   min_words: 3
 
   # Injected transcript lines for ASVspoof demo audio, which is read speech and
