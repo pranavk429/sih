@@ -212,6 +212,176 @@ def cmd_scores(args, cfg: Config) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------
+# run — the Day 2 deliverable: quiet, then a trigger, then a verdict
+# --------------------------------------------------------------------------
+STATE_COLOUR = {
+    "MONITORING": DIM,
+    "VERIFIED": GREEN,
+    "UNCERTAIN": YELLOW,
+    "LIKELY_IMPERSONATION": RED,
+}
+
+
+def build_runtime(cfg: Config, with_asr: bool = True):
+    """Load everything once. Returns (orchestrator, calibration)."""
+    from sentinel.decision.calibration import Calibration
+    from sentinel.pipeline.orchestrator import Orchestrator
+    from sentinel.trigger.engine import TriggerEngine
+
+    cal = Calibration.load(cfg.models.calibration_path)
+    warning = cal.check_band(cfg.decision.low_thr, cfg.decision.high_thr)
+    if warning:
+        print(f"! {warning}", file=sys.stderr)
+
+    cm, spk = registry.build_models(cfg)
+    trigger_engine = TriggerEngine(cfg.trigger, cfg.models)
+
+    factory = None
+    if with_asr:
+        from sentinel.asr.transcriber import AsrThread, Transcriber
+
+        transcriber = Transcriber(cfg.models)
+
+        def factory(on_utterance):  # noqa: F811
+            return AsrThread(
+                transcriber, cfg.audio, on_utterance,
+                maxsize=cfg.server.asr_queue_size,
+            )
+
+    return Orchestrator(cfg, cm, spk, cal, trigger_engine, factory), cal
+
+
+def cmd_run(args, cfg: Config) -> int:
+    import datetime as dt
+
+    from sentinel.evidence.log import EvidenceLog
+
+    path = resolve_audio(cfg, args.audio, args.demo)
+    speaker_id = args.speaker or default_speaker(cfg)
+    paint = _colour(not args.no_colour)
+
+    manifest = demo_manifest(cfg)
+    ground_truth = None
+    if manifest and args.demo:
+        for call in manifest["calls"]:
+            if call["id"] == args.demo:
+                ground_truth = call["ground_truth"]
+
+    store = EnrolmentStore(cfg.paths.enrolments_dir)
+    ref = store.get(speaker_id) if speaker_id else None
+
+    print(paint(DIM, "loading models..."))
+    orchestrator, cal = build_runtime(cfg, with_asr=not args.no_asr)
+
+    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_path = os.path.join(cfg.paths.evidence_dir, f"run-{stamp}.jsonl")
+    orchestrator.evidence = EvidenceLog(log_path)
+
+    source = FileSource(
+        path,
+        sample_rate=cfg.audio.sample_rate,
+        frame_ms=cfg.audio.frame_ms,
+        realtime=not args.fast,
+    )
+
+    print()
+    print(paint(BOLD, f"  {os.path.basename(path)}  ·  {source.duration_s:.1f}s"))
+    print(paint(DIM, "  Simulated live call — recorded audio streamed in real time."))
+    print(paint(DIM, f"  calibration {cal.calibration_id} · {cal.dataset} · "
+                     f"EER {cal.eer * 100:.1f}% on {cal.n_test_trials} trials"))
+    print(paint(DIM, f"  mode={args.mode}  speaker={speaker_id or '-'}  "
+                     f"ground truth={ground_truth or 'unknown'}"))
+    print(paint(DIM, "  " + "-" * 68))
+
+    last_state = [None]
+
+    def on_event(event):
+        kind = event.get("type")
+        if kind == "utterance":
+            tag = paint(YELLOW, "[SCRIPTED]") if event["scripted"] else "          "
+            print(f"  {event['t_end_ms'] / 1000:6.1f}s {tag} {event['text']}")
+        elif kind == "trigger":
+            print()
+            print(paint(RED + BOLD, f"  {event['t_ms'] / 1000:6.1f}s  "
+                                    f"{event['description']}"))
+            print()
+        elif kind == "verdict":
+            state = event["state"]
+            if state == last_state[0]:
+                return
+            last_state[0] = state
+            colour = STATE_COLOUR[state]
+            print(paint(colour + BOLD,
+                        f"  {event['t_ms'] / 1000:6.1f}s  ── {state} ── "
+                        f"risk {event['risk']:.3f}  confidence {event['confidence']:.2f}"))
+            for reason in event["reasons"]:
+                print(paint(DIM, f"          · {reason}"))
+
+    stats = orchestrator.run(
+        source,
+        reference_embedding=ref,
+        speaker_id=speaker_id,
+        mode=args.mode,
+        ground_truth=ground_truth,
+        on_event=on_event,
+    )
+
+    verdict = stats.verdict
+    colour = STATE_COLOUR[verdict.state]
+    print(paint(DIM, "  " + "-" * 68))
+    print()
+    print(paint(colour + BOLD, f"  FINAL: {verdict.state}   risk {verdict.risk:.3f}   "
+                               f"confidence {verdict.confidence:.2f}"))
+    for reason in verdict.reasons:
+        print(paint(DIM, f"    · {reason}"))
+    print()
+    print(f"  recommended action: {verdict.recommended_action}")
+    if verdict.segments:
+        print(f"\n  suspicious segments ({len(verdict.segments)}):")
+        for seg in verdict.segments[:5]:
+            print(f"    {seg.t_start_ms / 1000:6.1f}-{seg.t_end_ms / 1000:5.1f}s  "
+                  f"fused {seg.fused_risk:.3f}  "
+                  f"cm {seg.cm_risk if seg.cm_risk is None else round(seg.cm_risk, 3)}  "
+                  f"spk {seg.speaker_risk if seg.speaker_risk is None else round(seg.speaker_risk, 3)}")
+    print()
+    print(paint(DIM, f"  {stats.windows_total} windows "
+                     f"({stats.windows_scored} scored, {stats.windows_silent} silent, "
+                     f"{stats.windows_deep} deep) · {stats.utterances} utterances · "
+                     f"{stats.triggers} triggers"))
+    print(paint(DIM, f"  alerts {stats.alerts}"
+                     + (f" · FALSE ALARMS {stats.false_alarms}" if ground_truth == "bonafide" else "")
+                     + f" · max pipeline lag {stats.max_lag_ms} ms"))
+    print(paint(DIM, f"  {stats.wall_s:.1f}s wall clock for {stats.stream_s:.1f}s of audio"))
+    print(paint(DIM, f"  evidence: {os.path.relpath(log_path)}"))
+    return 0
+
+
+def cmd_verify(args, cfg: Config) -> int:
+    from sentinel.evidence.log import verify
+
+    path = args.log
+    if path is None:
+        logs = sorted(
+            os.path.join(cfg.paths.evidence_dir, f)
+            for f in os.listdir(cfg.paths.evidence_dir)
+            if f.endswith(".jsonl")
+        ) if os.path.isdir(cfg.paths.evidence_dir) else []
+        if not logs:
+            raise SystemExit("no evidence logs found")
+        path = logs[-1]
+
+    ok, problems = verify(path)
+    print(f"{os.path.relpath(path)}")
+    if ok:
+        print("  hash chain intact")
+        return 0
+    print("  CHAIN BROKEN:")
+    for problem in problems:
+        print(f"    {problem}")
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="sentinel", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -239,6 +409,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_scores.add_argument("--quiet", action="store_true", help="hide silent windows")
     p_scores.add_argument("--no-colour", action="store_true")
     p_scores.set_defaults(func=cmd_scores)
+
+    p_run = sub.add_parser("run", help="run the full pipeline on a call")
+    audio_args(p_run)
+    p_run.add_argument("--mode", choices=("triggered", "always_on"), default=None,
+                       help="triggered = Sentinel; always_on = the naive design")
+    p_run.add_argument("--console", action="store_true",
+                       help="accepted for symmetry; run always prints to console")
+    p_run.add_argument("--fast", action="store_true",
+                       help="replay flat out instead of at real speed")
+    p_run.add_argument("--no-asr", action="store_true",
+                       help="skip transcription; scripted overlay still fires")
+    p_run.add_argument("--no-colour", action="store_true")
+    p_run.set_defaults(func=cmd_run)
+
+    p_verify = sub.add_parser("verify", help="check an evidence log's hash chain")
+    p_verify.add_argument("--log", default=None, help="defaults to the newest log")
+    p_verify.set_defaults(func=cmd_verify)
 
     return ap
 

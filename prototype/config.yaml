@@ -87,7 +87,11 @@ trigger:
   # itself evidence — but it still must not be closer to normal call content
   # than to fraud. This is the line that kills "I'll transfer you to the other
   # line" (keyword hit, margin -0.10).
-  lexical_confirm_floor: 0.0
+  #
+  # Not zero: real ASR fragments can land marginally positive by chance, and a
+  # spurious keyword plus +0.01 of margin is not evidence of anything. Genuine
+  # keyword-bearing instructions clear +0.18, so this buffer costs nothing.
+  lexical_confirm_floor: 0.02
   #
   # A bare word is not an instruction.
   min_words: 3

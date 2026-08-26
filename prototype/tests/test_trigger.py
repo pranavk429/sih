@@ -13,6 +13,7 @@ import pytest
 
 from sentinel.trigger.engine import TriggerEngine, lexical_hits
 from sentinel.trigger.intents import (
+    ASR_NOISE,
     HARD_POSITIVES,
     HELD_OUT_NEGATIVES,
     KNOWN_FALSE_POSITIVES,
@@ -84,6 +85,24 @@ def test_paraphrases_with_no_keyword_overlap_fire(engine, text):
     assert event.stage == "semantic", (
         f"{text!r} fired via stage {event.stage}; the point of this case is that "
         "the lexical prefilter cannot see it"
+    )
+
+
+@pytest.mark.parametrize("text", ASR_NOISE)
+def test_real_transcriber_output_does_not_trigger(engine, text):
+    """
+    The demo lives or dies on this.
+
+    These are verbatim faster-whisper outputs from the demo calls — VCTK read
+    speech over a degraded line. On the first full run the trigger fired on
+    three of them, because the benign anchors were all banking sentences and
+    real transcripts are not. If any of these starts firing again, the demo
+    opens with the system alarming at nothing and the whole argument is lost.
+    """
+    event = engine.evaluate(_utt(text))
+    assert event is None, (
+        f"trigger fired on ordinary transcribed speech: {text!r} "
+        f"(intent={event.intent}, stage={event.stage}, margin={event.margin:+.3f})"
     )
 
 

@@ -119,8 +119,9 @@ class TriggerConfig:
     # separate the classes -- see trigger/engine.py and config.yaml.
     semantic_margin: float = 0.05
     # A stage-1 keyword hit fires only if the sentence is at least as close to a
-    # fraud intent as to normal call content.
-    lexical_confirm_floor: float = 0.0
+    # fraud intent as to normal call content, plus a small buffer against
+    # spurious ASR fragments.
+    lexical_confirm_floor: float = 0.02
     # Utterances shorter than this are too weak a signal to judge semantically.
     min_words: int = 3
     scripted_overlay: Tuple[ScriptedUtterance, ...] = ()

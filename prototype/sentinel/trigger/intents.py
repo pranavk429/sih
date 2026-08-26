@@ -81,10 +81,14 @@ INTENTS: Tuple[Intent, ...] = (
             "do it now, there is no time to check with anyone",
             "this is urgent and it has to happen before the deadline tonight",
         ),
+        # NB: terms must be specific enough not to occur in ordinary English.
+        # "board" was here and fired on "the board would refer it to the
+        # Scottish Parliament" — a line real ASR produced from the demo audio.
+        # A term that appears in general conversation is not evidence.
         terms=(
             "right now", "immediately", "before the deadline", "no time",
             "urgent", "urgently", "managing director", "chairman", "cfo",
-            "ceo", "director", "board", "i am instructing", "do it now",
+            "ceo", "board of directors", "i am instructing", "do it now",
             "cannot wait", "can't wait",
         ),
     ),
@@ -167,6 +171,51 @@ BENIGN_ANCHORS: Tuple[str, ...] = (
     "I am putting this call across to another desk now",
     "we have noted the change in your registered details",
     "your reward points expire at the end of the quarter",
+    # --- generic conversational English ---
+    # Banking anchors alone are not enough. Real ASR on a real call produces
+    # short, contextless fragments of ordinary speech, and against a purely
+    # banking benign class those land ABOVE the margin: on the first full demo
+    # run the trigger fired on "It didn't matter who was in their way" (+0.17)
+    # and "do you think we are a thought nation?" (+0.08). The benign class has
+    # to mean "anything that is not a fraud instruction", not "banking small
+    # talk". With these added, the same lines score -0.10 and -0.11.
+    "I do not think that is what he meant at all",
+    "she said it would probably happen again next year",
+    "the weather has been unusually warm for this time of year",
+    "he walked back towards the house without saying anything",
+    "that is a question people have argued about for a very long time",
+    "nobody really knows how the story ended",
+    "it happened long before any of us were born",
+    "we talked about it for a while and then moved on",
+    "the report was published earlier this month",
+    "there is no simple answer to that question",
+    "most people would probably agree with that view",
+    "they were talking about the match on the radio",
+    "it was the first time anyone had asked him that",
+    "the whole thing seemed rather unlikely to me",
+    "she remembered it differently from everyone else",
+    "the government said it would look into the matter",
+    "people have been doing it that way for years",
+    "nothing much has changed since then",
+)
+
+
+# Real faster-whisper output from the demo calls — read speech from VCTK, over a
+# degraded phone line. Held out: never used to choose anchors or thresholds.
+#
+# This is the category the curated negatives completely missed. Well-formed
+# banking sentences are not what a transcriber actually emits mid-call; short
+# fragments of unrelated speech are. The trigger must stay silent on all of it,
+# or the "the system sits quiet until the stakes are real" demo collapses in
+# the first ten seconds.
+ASR_NOISE: Tuple[str, ...] = (
+    "The board would refer it to the Scottish Parliament.",
+    "It's about my time as a guitarist.",
+    "do you think we are a thought nation?",
+    "It didn't matter who was in their way.",
+    "Well, it did last time he was reminded.",
+    "Thank you, thank you for your thought, nation.",
+    "Thank you for your evaluation.",
 )
 
 

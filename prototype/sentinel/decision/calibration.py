@@ -122,6 +122,10 @@ class Calibration:
             return None
         return (float(value) - float(stats["mean"])) / std
 
+    # config.yaml is hand-written to four decimals, so anything tighter than
+    # this compares the rounding rather than the thresholds.
+    BAND_TOLERANCE = 5e-4
+
     def check_band(self, low_thr: float, high_thr: float) -> Optional[str]:
         """
         Warn when config.yaml's thresholds have drifted from the calibration's.
@@ -131,7 +135,10 @@ class Calibration:
         calibrated and the numbers we decide with is exactly the kind of thing a
         judge is entitled to catch us on.
         """
-        if abs(low_thr - self.band_low) < 1e-6 and abs(high_thr - self.band_high) < 1e-6:
+        if (
+            abs(low_thr - self.band_low) <= self.BAND_TOLERANCE
+            and abs(high_thr - self.band_high) <= self.BAND_TOLERANCE
+        ):
             return None
         return (
             f"config thresholds [{low_thr}, {high_thr}] differ from "
