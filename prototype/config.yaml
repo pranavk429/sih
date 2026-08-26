@@ -1,0 +1,83 @@
+# Sentinel — every tunable number in the system.
+#
+# IMPLEMENTATION-PLAN rule 3: if a threshold appears in a module instead of
+# here, it is a bug waiting to be found on stage.
+#
+# Thresholds under `decision` are SEEDED FROM artifacts/calibration.json, which
+# is produced by scripts/fit_probe.py. When the Kaggle full-scale run lands,
+# regenerate calibration.json and revisit low_thr/high_thr — do not hand-tune
+# them here and then claim the calibration produced them.
+
+audio:
+  sample_rate: 16000
+  frame_ms: 20
+  window_s: 3.0
+  hop_s: 0.5
+  # RMS floor below which a frame is line noise, not speech. Guards Gap 3:
+  # Resemblyzer's preprocess_wav returns an empty array on silence and then
+  # embed_utterance blows up.
+  vad_rms_floor: 0.006
+  vad_min_voiced_ratio: 0.30
+
+models:
+  cm_backbone_id: facebook/wav2vec2-base
+  probe_head_path: artifacts/probe_head.npz
+  calibration_path: artifacts/calibration.json
+  device: auto              # auto -> MPS on Apple Silicon, else CPU
+
+  asr_model_id: base.en
+  asr_device: cpu
+  asr_compute_type: int8
+
+  trigger_encoder_id: sentence-transformers/all-MiniLM-L6-v2
+
+  # Empty = the standard huggingface_hub cache (~/.cache/huggingface/hub).
+  # Leave it empty. detector/src/probe_model.py calls from_pretrained() with no
+  # cache_dir, so pointing this elsewhere creates a second cache that the
+  # countermeasure never reads — and the demo dies offline.
+  hf_cache_dir: ""
+  asr_cache_dir: artifacts/models/asr
+
+trigger:
+  semantic_threshold: 0.55
+  lexical_confirm_floor: 0.30
+  min_words: 3
+
+  # Injected transcript lines for ASVspoof demo audio, which is read speech and
+  # contains no financial instruction. Rendered in the UI with a visible
+  # "SCRIPTED" marker — see IMPLEMENTATION-PLAN 2.6. Switch off (empty list)
+  # for the teammate-cloned audio, which says the transfer line for real.
+  scripted_overlay:
+    - t_ms: 16000
+      text: "Sir this is regarding the vendor settlement we discussed."
+    - t_ms: 21000
+      text: "I need you to transfer two crore to this account tonight."
+    - t_ms: 26000
+      text: "Please don't call the branch, there isn't time for the usual approval."
+
+gating:
+  mode: triggered           # triggered | always_on
+  pre_roll_s: 3.0           # score backwards from the trigger
+  hold_s: 10.0
+
+decision:
+  # Seeded from calibration.json eer_threshold (0.5326) with a deliberate
+  # abstention band around it. Anything inside the band is UNCERTAIN, which is
+  # a legitimate outcome, not an error (SPEC §7.4).
+  low_thr: 0.46
+  high_thr: 0.60
+  fusion: mean              # mean | logistic
+  min_windows: 2
+  evidence_risk_floor: 0.55
+
+server:
+  host: 127.0.0.1
+  port: 8000
+  static_dir: sentinel/server/static
+  event_queue_size: 1000    # UI events: drop oldest, count drops
+  asr_queue_size: 200       # ASR frames: block, never drop — a gap is a missed trigger
+
+paths:
+  enrolments_dir: artifacts/enrolments
+  demo_dir: artifacts/demo
+  evidence_dir: artifacts/evidence
