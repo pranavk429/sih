@@ -5,11 +5,18 @@ This module owns SPEC Gap 2. Resemblyzer's similarity() returns higher = SAME
 person. Every score in Sentinel is a risk where higher = MORE SUSPICIOUS. The
 inversion happens on the marked line below and nowhere else in the codebase.
 
-It also owns half of Gap 3. Resemblyzer's preprocess_wav runs its own VAD and
-returns an empty array on a silent window; embed_utterance then raises. A
-streaming system hits silent windows constantly -- pauses, hold music, line
-noise -- so embed() raises a typed SilentAudio rather than letting an opaque
-numpy error escape into the pipeline loop.
+It also owns half of Gap 3, and the reality there is worse than the SPEC
+predicted. The SPEC expected Resemblyzer to CRASH on a silent window. It does
+not. Fed pure digital silence it emits a perfectly well-formed embedding --
+unit norm, 103 of 256 components non-zero, structurally indistinguishable from
+a real one -- which scores 0.31 risk against a genuine enrolment. That is below
+low_thr, so untreated silence would be reported as VERIFIED. The system would
+confidently confirm the enrolled speaker while listening to nothing.
+
+A crash would have been the kinder failure. Because the bad embedding cannot be
+detected after the fact, the only possible guard is on input energy, and that
+is what min_rms below does. The pipeline's VAD is the primary gate; this is the
+backstop underneath it. test_vad_silence.py pins the behaviour.
 """
 from __future__ import annotations
 
@@ -27,16 +34,34 @@ class ResemblyzerSpeakerEncoder:
 
     model_id = "resemblyzer-voice-encoder-v1"
 
-    def __init__(self) -> None:
+    def __init__(self, min_rms: float = 0.0015) -> None:
         self._embed, self._similarity = registry.speaker_fns()
+        self.min_rms = min_rms
 
     def embed(self, pcm: np.ndarray, sr: int) -> np.ndarray:
         pcm = np.asarray(pcm, dtype=np.float32)
+        if pcm.size == 0:
+            raise SilentAudio("empty window")
+
+        # The load-bearing guard. See the module docstring: a silent window
+        # produces a confident, wrong answer rather than an error, so it has to
+        # be refused before it reaches the encoder.
+        level = float(np.sqrt(np.mean(np.square(pcm.astype(np.float64)))))
+        if level < self.min_rms:
+            raise SilentAudio(
+                f"window RMS {level:.5f} below min_embed_rms {self.min_rms:.5f}"
+            )
+
         try:
-            return self._embed(pcm, sr)
+            emb = self._embed(pcm, sr)
         except (ValueError, IndexError, RuntimeError) as exc:
-            # preprocess_wav VAD'd the whole window away.
+            # preprocess_wav's own VAD removed everything.
             raise SilentAudio(f"no voiced audio to embed ({exc})") from exc
+
+        emb = np.asarray(emb, dtype=np.float32)
+        if not np.isfinite(emb).all():
+            raise SilentAudio("encoder produced a non-finite embedding")
+        return emb
 
     def similarity(self, ref: np.ndarray, test: np.ndarray) -> float:
         """[0,1]; higher = same speaker. Exposed for tests and debugging only."""

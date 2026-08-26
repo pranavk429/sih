@@ -79,5 +79,5 @@ def build_models(cfg: Config) -> Tuple[Any, Any]:
         head_path=cfg.models.probe_head_path,
         device=cfg.models.device,
     )
-    spk = ResemblyzerSpeakerEncoder()
+    spk = ResemblyzerSpeakerEncoder(min_rms=cfg.audio.min_embed_rms)
     return cm, spk

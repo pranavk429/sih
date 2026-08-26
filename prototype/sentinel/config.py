@@ -61,7 +61,11 @@ class AudioConfig:
     # RMS below this is treated as line noise, not speech.
     vad_rms_floor: float = 0.006
     # ...and at least this fraction of a window's frames must clear the floor.
-    vad_min_voiced_ratio: float = 0.30
+    # Measured, not guessed -- see config.yaml.
+    vad_min_voiced_ratio: float = 0.10
+    # Backstop inside the speaker adapter. Resemblyzer does not raise on
+    # silence; it returns a plausible-looking embedding. See resemblyzer_spk.
+    min_embed_rms: float = 0.0015
 
 
 @dataclass(frozen=True)

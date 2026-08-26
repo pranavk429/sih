@@ -13,11 +13,33 @@ audio:
   frame_ms: 20
   window_s: 3.0
   hop_s: 0.5
-  # RMS floor below which a frame is line noise, not speech. Guards Gap 3:
-  # Resemblyzer's preprocess_wav returns an empty array on silence and then
-  # embed_utterance blows up.
+  # --- the Gap 3 gate. These two numbers were measured, not chosen. ---
+  #
+  # RMS floor below which a 20ms frame is line noise rather than speech.
+  # 0.006 cleanly separates the demo's inter-segment noise (0.0008 RMS) from
+  # actual speech frames (0.1+ RMS).
   vad_rms_floor: 0.006
-  vad_min_voiced_ratio: 0.30
+  #
+  # Fraction of a window's frames that must clear that floor. ASVspoof clips
+  # are read speech with long pauses — only 30-42% of their frames are voiced
+  # even before degradation — so this has to be low. Measured on the genuine
+  # demo call, speaker risk against the enrolment reference by voiced ratio:
+  #     0.00-0.05  ->  0.27  (degenerate: the embedding of near-silence)
+  #     0.05-0.10  ->  0.24  (degenerate)
+  #     0.10-0.20  ->  0.19
+  #     0.20-0.35  ->  0.15
+  #     0.35+      ->  0.11  (clean)
+  # Below 0.10 the embedding stops being about the speaker and starts being
+  # about the silence, which inflates risk on genuine calls. 0.10 is where the
+  # numbers become monotonic and trustworthy. It scores ~67% of windows.
+  vad_min_voiced_ratio: 0.10
+  #
+  # Backstop inside the speaker adapter, below the VAD. Resemblyzer does NOT
+  # raise on digital silence — it returns a plausible unit-norm embedding that
+  # scores 0.31 risk, i.e. it would report silence as VERIFIED. Nothing about
+  # that vector is structurally distinguishable from a real one, so the only
+  # possible guard is on input energy.
+  min_embed_rms: 0.0015
 
 models:
   cm_backbone_id: facebook/wav2vec2-base
