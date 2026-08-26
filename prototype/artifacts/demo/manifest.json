@@ -1,0 +1,170 @@
+{
+  "created_utc": "2026-08-26T12:22:12+00:00",
+  "dataset": "ASVspoof2019-LA pilot slice",
+  "speaker_id": "LA_0022",
+  "sample_rate": 16000,
+  "degrade_profile": "mobile_voip",
+  "degrade_seed": 1337,
+  "target_duration_s": 35.0,
+  "enrolment": {
+    "file": "enrol.wav",
+    "source": "LA_E_4148077.npy",
+    "duration_s": 6.271,
+    "degraded": false
+  },
+  "calls": [
+    {
+      "id": "genuine",
+      "title": "Genuine call \u2014 the enrolled speaker, over a mobile line",
+      "file": "genuine.wav",
+      "ground_truth": "bonafide",
+      "duration_s": 37.534,
+      "degraded": true,
+      "degrade_profile": "mobile_voip",
+      "segments": [
+        {
+          "t_start_ms": 0,
+          "t_end_ms": 5630,
+          "source": "LA_E_8177958.npy",
+          "label": "bonafide",
+          "repeat": 0
+        },
+        {
+          "t_start_ms": 6519,
+          "t_end_ms": 12106,
+          "source": "LA_E_7255033.npy",
+          "label": "bonafide",
+          "repeat": 0
+        },
+        {
+          "t_start_ms": 13007,
+          "t_end_ms": 18637,
+          "source": "LA_E_8177958.npy",
+          "label": "bonafide",
+          "repeat": 1
+        },
+        {
+          "t_start_ms": 19489,
+          "t_end_ms": 25076,
+          "source": "LA_E_7255033.npy",
+          "label": "bonafide",
+          "repeat": 1
+        },
+        {
+          "t_start_ms": 25829,
+          "t_end_ms": 31459,
+          "source": "LA_E_8177958.npy",
+          "label": "bonafide",
+          "repeat": 2
+        },
+        {
+          "t_start_ms": 31947,
+          "t_end_ms": 37534,
+          "source": "LA_E_7255033.npy",
+          "label": "bonafide",
+          "repeat": 2
+        }
+      ],
+      "source_clips": [
+        "LA_E_7255033.npy",
+        "LA_E_8177958.npy"
+      ],
+      "passes_over_pool": 3
+    },
+    {
+      "id": "attack",
+      "title": "Attack call \u2014 synthesised voice of the same speaker",
+      "file": "attack.wav",
+      "ground_truth": "spoof",
+      "duration_s": 36.656,
+      "degraded": true,
+      "degrade_profile": "mobile_voip",
+      "segments": [
+        {
+          "t_start_ms": 0,
+          "t_end_ms": 1962,
+          "source": "LA_E_6977360.npy",
+          "label": "spoof",
+          "repeat": 0
+        },
+        {
+          "t_start_ms": 2744,
+          "t_end_ms": 6197,
+          "source": "LA_E_9088738.npy",
+          "label": "spoof",
+          "repeat": 0
+        },
+        {
+          "t_start_ms": 6912,
+          "t_end_ms": 9594,
+          "source": "LA_E_8767294.npy",
+          "label": "spoof",
+          "repeat": 0
+        },
+        {
+          "t_start_ms": 10178,
+          "t_end_ms": 12140,
+          "source": "LA_E_6977360.npy",
+          "label": "spoof",
+          "repeat": 1
+        },
+        {
+          "t_start_ms": 12791,
+          "t_end_ms": 16244,
+          "source": "LA_E_9088738.npy",
+          "label": "spoof",
+          "repeat": 1
+        },
+        {
+          "t_start_ms": 17193,
+          "t_end_ms": 19875,
+          "source": "LA_E_8767294.npy",
+          "label": "spoof",
+          "repeat": 1
+        },
+        {
+          "t_start_ms": 20485,
+          "t_end_ms": 22447,
+          "source": "LA_E_6977360.npy",
+          "label": "spoof",
+          "repeat": 2
+        },
+        {
+          "t_start_ms": 23267,
+          "t_end_ms": 26720,
+          "source": "LA_E_9088738.npy",
+          "label": "spoof",
+          "repeat": 2
+        },
+        {
+          "t_start_ms": 27214,
+          "t_end_ms": 29896,
+          "source": "LA_E_8767294.npy",
+          "label": "spoof",
+          "repeat": 2
+        },
+        {
+          "t_start_ms": 30529,
+          "t_end_ms": 32491,
+          "source": "LA_E_6977360.npy",
+          "label": "spoof",
+          "repeat": 3
+        },
+        {
+          "t_start_ms": 33200,
+          "t_end_ms": 36653,
+          "source": "LA_E_9088738.npy",
+          "label": "spoof",
+          "repeat": 3
+        }
+      ],
+      "source_clips": [
+        "LA_E_6977360.npy",
+        "LA_E_8767294.npy",
+        "LA_E_9088738.npy"
+      ],
+      "passes_over_pool": 4
+    }
+  ],
+  "honesty": "Simulated live call. These are recorded ASVspoof2019-LA clips from one speaker, concatenated with line-noise gaps and cycled to reach 35s, then passed through a mobile_voip channel simulation. Every segment and every repeat is listed above. This is not a live phone call and must never be described as one."
+}
