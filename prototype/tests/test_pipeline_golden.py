@@ -371,6 +371,30 @@ def test_the_pre_roll_never_scores_a_window_the_vad_refused(
         )
 
 
+def test_naive_mode_accumulates_false_alarms_the_genuine_call_does_not(
+        orchestrator, cfg, demo_dir, reference):
+    """
+    SPEC §1's headline claim, pinned. IMPLEMENTATION-PLAN 4.1: naive mode
+    (score every window) climbs a false-alarm counter on a genuine call;
+    Sentinel mode does not, because nothing is scored until a trigger fires.
+    Verified by eye in a browser since Day 3 -- this is the automated version.
+    """
+    _, sentinel_stats = _replay(orchestrator, cfg, demo_dir, "genuine", reference,
+                                mode="triggered", ground_truth="bonafide")
+    _, naive_stats = _replay(orchestrator, cfg, demo_dir, "genuine", reference,
+                             mode="always_on", ground_truth="bonafide")
+
+    assert sentinel_stats.false_alarms == 0, (
+        f"Sentinel mode raised {sentinel_stats.false_alarms} false alarm(s) on "
+        "a genuine call -- it should stay silent until triggered"
+    )
+    assert naive_stats.false_alarms > 0, (
+        "naive mode (always_on) scored every window on a genuine call and "
+        "still raised no false alarms -- the comparison this demo exists to "
+        "make just went flat"
+    )
+
+
 def test_a_stopped_run_ends_cleanly(orchestrator, cfg, demo_dir, reference):
     """`POST /stop` in the server rides on this. A half-finished run still
     produces a final verdict rather than leaving the UI hanging."""
