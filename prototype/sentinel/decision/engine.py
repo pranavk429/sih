@@ -54,6 +54,24 @@ ACTIONS = {
                           "registered number and escalate to the fraud desk.",
 }
 
+# The CHALLENGE layer (IMPLEMENTATION-PLAN 4.2). A scripted line for the
+# operator to read to the caller before hanging up to verify independently --
+# not an automated or interactive challenge-response system (SPEC §3 does not
+# build one), and the UI must label it as scripted. Only UNCERTAIN gets one:
+# VERIFIED needs no challenge and LIKELY_IMPERSONATION's action is already to
+# stop and escalate, not to keep the caller talking.
+CHALLENGE_PROMPTS = {
+    UNCERTAIN: (
+        "Ask the caller something only the genuine account holder would know "
+        "without being told it now -- the last four digits of a recent "
+        "transaction, or a pre-agreed code word -- then end the call. A "
+        "replayed or cloned voice can deliver a rehearsed instruction; it "
+        "cannot improvise past an unscripted follow-up. Treat any answer, "
+        "confident or not, as unverified until confirmed on the registered "
+        "callback number."
+    ),
+}
+
 
 def aggregate(kind: str, scores: Sequence[RiskScore], model_id: str) -> Optional[RiskScore]:
     """
@@ -177,6 +195,7 @@ def decide(
             segments=list(segments),
             recommended_action=ACTIONS[state],
             model_ids=model_ids,
+            challenge_prompt=CHALLENGE_PROMPTS.get(state, ""),
         )
 
     # --- 1. No trigger. The system stays quiet, whatever the scores say. -----

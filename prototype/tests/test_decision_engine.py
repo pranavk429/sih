@@ -161,6 +161,22 @@ def test_every_verdict_is_serialisable_and_attributed(cal, cfg, name, kwargs):
     )
 
 
+@pytest.mark.parametrize("name,kwargs", ALL_CASES, ids=[c[0] for c in ALL_CASES])
+def test_challenge_prompt_is_scripted_and_only_shown_on_uncertain(cal, cfg, name, kwargs):
+    """
+    IMPLEMENTATION-PLAN 4.2: the CHALLENGE panel only has something to show on
+    UNCERTAIN. VERIFIED needs no challenge; LIKELY_IMPERSONATION's action is
+    already to stop and escalate, not keep the caller talking.
+    """
+    verdict = call(cal, cfg, **kwargs)
+    if verdict.state == UNCERTAIN:
+        assert verdict.challenge_prompt, f"{name}: UNCERTAIN with no challenge prompt"
+    else:
+        assert verdict.challenge_prompt == "", (
+            f"{name}: {verdict.state} should carry no challenge prompt"
+        )
+
+
 def test_thresholds_are_boundaries_not_approximations(cal, cfg):
     """Exactly on a boundary is inside the band, not outside it."""
     low, high = cfg.decision.low_thr, cfg.decision.high_thr

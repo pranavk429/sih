@@ -231,6 +231,11 @@ class Verdict:
     segments: List[EvidenceSegment] = field(default_factory=list)
     recommended_action: str = ""
     model_ids: List[str] = field(default_factory=list)
+    # The prompt to say to the caller before hanging up to verify independently.
+    # Non-empty only on UNCERTAIN (SPEC §7.4 abstention; IMPLEMENTATION-PLAN
+    # 4.2). Scripted, not an interactive/adaptive challenge -- the UI must
+    # label it as such.
+    challenge_prompt: str = ""
 
     def to_json(self) -> Dict[str, Any]:
         return {
@@ -252,4 +257,5 @@ class Verdict:
             "segments": [s.to_json() for s in self.segments],
             "recommended_action": self.recommended_action,
             "model_ids": list(self.model_ids),
+            "challenge_prompt": self.challenge_prompt,
         }

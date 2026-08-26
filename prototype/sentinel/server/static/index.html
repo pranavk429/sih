@@ -107,6 +107,17 @@
     <div class="action" id="action" hidden></div>
   </section>
 
+  <!-- Panel: the challenge. Only shown when the verdict is UNCERTAIN. -->
+  <section class="panel challenge" id="challenge-panel" hidden>
+    <h2>Challenge <span class="tag scripted">SCRIPTED</span></h2>
+    <div class="challenge-note">
+      A scripted line for the operator to read to the caller before hanging
+      up to verify independently — not an automated or interactive
+      challenge, and not itself proof of anything the caller says back.
+    </div>
+    <div class="challenge-prompt" id="challenge-prompt"></div>
+  </section>
+
   <!-- Panel 2: the transcript. -->
   <section class="panel transcript">
     <h2>Transcript <span class="sub" id="transcript-sub"></span></h2>

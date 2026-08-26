@@ -394,6 +394,14 @@ function renderTranscript() {
   box.scrollTop = box.scrollHeight;
 }
 
+function renderChallenge() {
+  const panel = $('challenge-panel');
+  const v = state.verdict;
+  const prompt = v && v.state === 'UNCERTAIN' ? v.challenge_prompt : '';
+  panel.hidden = !prompt;
+  if (prompt) text($('challenge-prompt'), prompt);
+}
+
 function renderEvidence() {
   const v = state.verdict;
   const segments = (v && v.segments) || [];
@@ -624,6 +632,7 @@ function frame() {
     renderHeader();
     renderControls();
     renderVerdict();
+    renderChallenge();
     renderTranscript();
     renderEvidence();
     renderFooter();
