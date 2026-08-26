@@ -1,0 +1,456 @@
+/*
+  Sentinel UI.
+
+  Built for a projector in a bright room: high contrast, large numbers, and
+  nothing that depends on colour alone to carry meaning.
+
+  One rule here is not aesthetic. SPEC §12 requires UNCERTAIN to be styled as a
+  legitimate outcome with the same visual weight as the other two -- not greyed
+  out, not an error state. Abstention is the system working correctly, and a UI
+  that renders it as a failure argues against the design it is demonstrating.
+  So --verified, --uncertain and --impersonation all get a full-saturation
+  colour, the same border weight, and the same type size. Only MONITORING is
+  dim, because "not deciding yet" genuinely is a lesser state.
+*/
+
+:root {
+  --bg:            #0d1117;
+  --bg-panel:      #151b24;
+  --bg-raised:     #1c242f;
+  --line:          #263041;
+  --line-soft:     #1e2733;
+
+  --ink:           #e6edf3;
+  --ink-dim:       #8b98a9;
+  --ink-faint:     #5b6673;
+
+  --verified:      #3fb950;
+  --uncertain:     #e3a008;
+  --impersonation: #f85149;
+  --monitoring:    #6e7d91;
+
+  --spk:           #58a6ff;
+  --cm:            #d2a8ff;
+  --gate:          #f8514922;
+  --scripted:      #e3a008;
+
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ---------------------------------------------------------------- header */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 18px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; flex-direction: column; }
+.mark {
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  font-size: 17px;
+}
+.tagline {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The honesty banner. Not dismissible, not subtle. */
+.banner {
+  padding: 6px 14px;
+  border: 1px solid #3d2f0a;
+  background: #241c05;
+  color: #f0c96b;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* SPEC §12: provenance sits next to the risk, always, from before the run. */
+.provenance {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 2px 18px;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.prov-line { display: flex; gap: 6px; align-items: baseline; }
+.prov-line .k { color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.prov-line .v { color: var(--ink-dim); }
+
+.status-chips { display: flex; gap: 6px; align-items: center; }
+.chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+.chip[data-state="on"]   { border-color: #1f6f34; color: var(--verified); }
+.chip[data-state="off"]  { border-color: #6b2020; color: var(--impersonation); }
+.chip[data-state="warn"] { border-color: #7a5a05; color: var(--uncertain); }
+
+/* -------------------------------------------------------------- controls */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 18px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.control-group { display: flex; align-items: center; gap: 8px; }
+.control-group.grow { flex: 1 1 0; min-width: 0; }
+/* Kept together so the Stop button never wraps away from Run. */
+.control-group.right { gap: 12px; flex: 0 0 auto; }
+
+.lbl {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+}
+
+select, .check {
+  background: var(--bg-raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--sans);
+  font-size: 13px;
+}
+.check { display: flex; align-items: center; gap: 6px; color: var(--ink-dim); cursor: pointer; }
+
+.segmented { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg {
+  background: var(--bg-raised);
+  color: var(--ink-dim);
+  border: none;
+  padding: 6px 14px;
+  font-family: var(--sans);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+.seg small { font-size: 9.5px; color: var(--ink-faint); letter-spacing: 0.04em; }
+.seg + .seg { border-left: 1px solid var(--line); }
+.seg[aria-checked="true"] { background: #22304a; color: var(--ink); }
+.seg[aria-checked="true"] small { color: var(--spk); }
+#mode-always_on[aria-checked="true"] { background: #3a1f1f; }
+#mode-always_on[aria-checked="true"] small { color: var(--impersonation); }
+
+button.run, button.stop {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+button.run  { background: var(--spk); color: #06101f; }
+button.stop { background: var(--bg-raised); color: var(--ink-dim); border-color: var(--line); }
+button:disabled { opacity: 0.4; cursor: default; }
+
+/* The false-alarm counter -- the demo feature that wins the argument. */
+.falsealarm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-raised);
+}
+.fa-count {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink-faint);
+  min-width: 1.6ch;
+  text-align: right;
+}
+.fa-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); }
+.fa-label small { text-transform: none; letter-spacing: 0; font-size: 10px; color: var(--ink-faint); }
+.falsealarm[data-state="clean"] { border-color: #1f6f34; }
+.falsealarm[data-state="clean"] .fa-count { color: var(--verified); }
+.falsealarm[data-state="alarming"] { border-color: var(--impersonation); background: #2a1414; }
+.falsealarm[data-state="alarming"] .fa-count { color: var(--impersonation); }
+
+/* ------------------------------------------------------------------ grid */
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) minmax(340px, 1fr);
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    "verdict   transcript"
+    "timeline  timeline"
+    "evidence  evidence";
+  gap: 12px;
+  padding: 12px 18px 16px;
+}
+@media (min-width: 1500px) {
+  .grid {
+    grid-template-columns: 1.15fr 1fr 1.25fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "verdict  transcript evidence"
+      "timeline timeline   timeline";
+  }
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px 14px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.panel > h2 {
+  margin: 0 0 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.panel > h2 .sub {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+.verdict   { grid-area: verdict; }
+.transcript{ grid-area: transcript; }
+.timeline  { grid-area: timeline; }
+.evidence  { grid-area: evidence; }
+
+.scroll {
+  overflow-y: auto;
+  max-height: 300px;
+  min-height: 120px;
+  scrollbar-width: thin;
+}
+.placeholder { color: var(--ink-faint); font-size: 13px; font-style: italic; }
+
+/* --------------------------------------------------------------- verdict */
+.verdict-state {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  padding: 12px 14px;
+  border-radius: 5px;
+  border-left: 6px solid var(--monitoring);
+  background: var(--bg-raised);
+  color: var(--monitoring);
+}
+/* All three outcomes, same weight, same size, same border. */
+#verdict-panel[data-state="VERIFIED"] .verdict-state {
+  color: var(--verified); border-left-color: var(--verified); background: #10231433;
+}
+#verdict-panel[data-state="UNCERTAIN"] .verdict-state {
+  color: var(--uncertain); border-left-color: var(--uncertain); background: #2a210533;
+}
+#verdict-panel[data-state="LIKELY_IMPERSONATION"] .verdict-state {
+  color: var(--impersonation); border-left-color: var(--impersonation); background: #2a121233;
+  font-size: 26px;
+}
+
+.verdict-numbers { display: flex; gap: 22px; margin: 12px 0 4px; }
+.num { display: flex; flex-direction: column; }
+.num-v { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+.num-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+
+.band-note {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-dim);
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--line-soft);
+  margin-top: 8px;
+}
+
+.reasons { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; }
+.reasons li {
+  padding: 5px 0 5px 14px;
+  border-left: 2px solid var(--line);
+  color: var(--ink-dim);
+  margin-bottom: 2px;
+}
+.reasons li:first-child { color: var(--ink); }
+
+.action {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-weight: 500;
+  background: var(--bg-raised);
+  border-left: 4px solid var(--monitoring);
+}
+#verdict-panel[data-state="VERIFIED"] .action { border-left-color: var(--verified); }
+#verdict-panel[data-state="UNCERTAIN"] .action { border-left-color: var(--uncertain); }
+#verdict-panel[data-state="LIKELY_IMPERSONATION"] .action { border-left-color: var(--impersonation); }
+.action .action-k {
+  display: block;
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-faint); margin-bottom: 3px;
+}
+
+/* ------------------------------------------------------------ transcript */
+.line {
+  display: flex;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: 13.5px;
+  border-left: 3px solid transparent;
+}
+.line .t { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); min-width: 5.5ch; padding-top: 2px; }
+.line .txt { flex: 1; }
+
+/* SPEC §12 / IMPLEMENTATION-PLAN 2.6: an unlabelled scripted line would make
+   the whole demo dishonest. This marker is not optional. */
+.line.scripted { border-left-color: var(--scripted); background: #241c0522; }
+.tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  vertical-align: 1px;
+  margin-right: 6px;
+  border: 1px solid currentColor;
+}
+.tag.scripted { color: var(--scripted); }
+.tag.trig     { color: var(--impersonation); }
+
+.line.triggered { background: #2a121244; border-left-color: var(--impersonation); }
+.trigger-detail {
+  margin: 2px 0 8px 26px;
+  padding: 7px 10px;
+  border-left: 3px solid var(--impersonation);
+  background: #1a0f0f;
+  font-size: 12px;
+  color: #f3b0ab;
+  border-radius: 0 3px 3px 0;
+}
+.trigger-detail .meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim); display: block; margin-top: 3px; }
+
+.overlay-note {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #d9ae4a;
+  background: #241c0533;
+  border: 1px dashed #4a3a0c;
+  border-radius: 3px;
+  padding: 7px 9px;
+  margin-bottom: 9px;
+  flex: 0 0 auto;
+}
+
+/* -------------------------------------------------------------- timeline */
+.timeline canvas { width: 100%; height: 210px; display: block; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; text-transform: none; letter-spacing: 0; }
+.key { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--ink-dim); }
+.key::before { content: ""; width: 13px; height: 3px; border-radius: 2px; background: currentColor; }
+.key-spk  { color: var(--spk); }
+.key-cm   { color: var(--cm); }
+.key-gate { color: #f85149; }
+.key-gate::before { height: 11px; opacity: 0.28; }
+.key-band { color: var(--uncertain); }
+.key-band::before { height: 11px; opacity: 0.28; }
+.timeline-note { font-size: 11.5px; color: var(--ink-faint); margin-top: 6px; }
+
+/* -------------------------------------------------------------- evidence */
+table.segments { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+table.segments th {
+  text-align: right;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  font-weight: 500;
+  padding: 0 8px 5px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+}
+table.segments th:first-child, table.segments td:first-child { text-align: left; }
+table.segments td { padding: 4px 8px; border-bottom: 1px solid var(--line-soft); text-align: right; color: var(--ink-dim); }
+table.segments td.risk { color: var(--impersonation); font-weight: 600; }
+table.segments tr:hover td { background: var(--bg-raised); }
+
+.ids {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line-soft);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  display: grid;
+  gap: 2px;
+}
+.ids .row { display: flex; gap: 8px; }
+.ids .row b { font-weight: 500; color: var(--ink-faint); min-width: 11ch; }
+.ids .row span { color: var(--ink-dim); word-break: break-all; }
+
+/* ---------------------------------------------------------------- footer */
+.footer {
+  display: flex;
+  gap: 14px;
+  padding: 7px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-panel);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+.footer .spacer { flex: 1; }

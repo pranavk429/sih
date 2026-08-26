@@ -181,6 +181,14 @@ class Orchestrator:
                     stats.triggers += 1
                     payload = event.to_json()
                     payload["description"] = self.trigger_engine.describe(event)
+                    # The spans the UI shades on the timeline. Computed here
+                    # rather than re-derived in JavaScript from pre_roll/hold --
+                    # two implementations of the gating window would eventually
+                    # disagree, and the screen would then be showing something
+                    # other than what the system did.
+                    payload["active_regions"] = [
+                        list(r) for r in gating.active_regions(triggers)
+                    ]
                     emit(payload)
                     if self.evidence is not None:
                         self.evidence.append("trigger", payload, t_ms=event.t_ms)
@@ -353,14 +361,41 @@ class Orchestrator:
             self._run_deep(window, cm_scores, deep_seqs, stats, emit)
 
     def _run_deep(self, window, cm_scores, deep_seqs, stats, emit) -> None:
+        """
+        The countermeasure, on one window. The ONLY place it is ever called.
+
+        The VAD gate lives here rather than in the caller because there are two
+        callers -- the forward pass and the pre-roll backfill -- and the backfill
+        used to reach the model without it. That mattered: fed a silent window
+        the probe does not fail, it returns ~0.99, near-certain "synthetic". It
+        is the exact mirror of the Resemblyzer behaviour in test_vad_silence.py
+        (fed silence, confidently "genuine"), and the same lesson: a model given
+        no speech still returns a confident number, and the number is about
+        nothing. On the genuine demo call this put nine 0.99 windows into the
+        evidence panel of a call the system had just verified.
+
+        So: one entry point, one gate. A refused window gets a SILENT score --
+        recorded and shown, not omitted -- and stays out of the aggregate.
+        """
         if window.seq in cm_scores:
             return
+
+        is_speech, ratio = self.vad.measure(window.pcm, window.sr)
+        if not is_speech:
+            silent = RiskScore(CM, 0.0, window.t_start_ms, window.t_end_ms,
+                               self.cm.model_id, SILENT)
+            cm_scores[window.seq] = silent
+            emit({**silent.to_json(), "seq": window.seq,
+                  "voiced_ratio": round(ratio, 3)})
+            return
+
         stats.windows_deep += 1
         cm_scores[window.seq] = self._safe_score(
             CM, window, lambda: self.cm.risk(window.pcm, window.sr), self.cm.model_id
         )
         deep_seqs.append(window.seq)
-        emit({**cm_scores[window.seq].to_json(), "seq": window.seq})
+        emit({**cm_scores[window.seq].to_json(), "seq": window.seq,
+              "voiced_ratio": round(ratio, 3)})
 
     def _backfill(self, framer, gating, triggers, window_index,
                   cm_scores, deep_seqs, stats, emit) -> None:

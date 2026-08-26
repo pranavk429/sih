@@ -138,6 +138,13 @@ server:
   static_dir: sentinel/server/static
   event_queue_size: 1000    # UI events: drop oldest, count drops
   asr_queue_size: 200       # ASR frames: block, never drop — a gap is a missed trigger
+  # SPEC §12: "if pipeline_lag_ms exceeds real time, show it." One hop (500 ms)
+  # is the honest line — the loop gets a full hop to produce each window's
+  # scores, so anything past that means we are not keeping up and the screen
+  # says so rather than quietly claiming to be real-time. Measured lag on the
+  # demo calls is 0 ms, so this never fires on the safe path; it exists for the
+  # live-microphone case and for a slower machine.
+  lag_warn_ms: 500
 
 paths:
   enrolments_dir: artifacts/enrolments

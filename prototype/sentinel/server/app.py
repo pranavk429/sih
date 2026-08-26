@@ -197,6 +197,8 @@ class Runner:
             "hop_s": self.cfg.audio.hop_s,
             "pre_roll_s": self.cfg.gating.pre_roll_s,
             "hold_s": self.cfg.gating.hold_s,
+            "evidence_risk_floor": self.cfg.decision.evidence_risk_floor,
+            "lag_warn_ms": self.cfg.server.lag_warn_ms,
             "default_mode": self.cfg.gating.mode,
             "demos": self.demos(),
             "honesty": "Simulated live call — recorded audio streamed in real time.",

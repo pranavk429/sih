@@ -161,6 +161,9 @@ class ServerConfig:
     event_queue_size: int = 1000
     # ...whereas a gap in the transcript is a missed trigger, so ASR blocks.
     asr_queue_size: int = 200
+    # Above this, the UI says out loud that it is behind real time (SPEC §12).
+    # One hop. See config.yaml.
+    lag_warn_ms: int = 500
 
 
 @dataclass(frozen=True)

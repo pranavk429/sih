@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<!--
+  Sentinel — the demo screen.
+
+  No CDN, no build step, no framework. One HTML file, one CSS file, one JS
+  file, all served from disk. SPEC §3: "a build step is a failure mode on
+  stage", and a CDN is a failure mode on a venue network with the WiFi off.
+
+  The honesty rules in SPEC §12 are structural here, not styling:
+    - the "Simulated live call" banner is in the header and cannot be dismissed
+    - the calibration provenance sits next to the risk number, always
+    - scripted overlay lines carry a visible marker in the transcript
+    - UNCERTAIN has the same visual weight as the other two verdicts
+    - pipeline lag is shown when we fall behind real time
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel — voice-cloning defence</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">SENTINEL</span>
+    <span class="tagline">trigger &rarr; verify &rarr; challenge &rarr; evidence</span>
+  </div>
+
+  <!-- SPEC §12: never call this a live phone call. -->
+  <div class="banner" id="banner">Simulated live call — recorded audio streamed in real time.</div>
+
+  <div class="provenance" id="provenance">
+    <div class="prov-line"><span class="k">calibration</span> <span class="v" id="prov-id">—</span></div>
+    <div class="prov-line"><span class="k">dataset</span> <span class="v" id="prov-dataset">—</span></div>
+    <div class="prov-line"><span class="k">EER</span> <span class="v" id="prov-eer">—</span></div>
+  </div>
+
+  <div class="status-chips">
+    <span class="chip" id="chip-conn" data-state="off">disconnected</span>
+    <span class="chip" id="chip-lag" hidden>lag —</span>
+    <span class="chip" id="chip-clock">—</span>
+  </div>
+</header>
+
+<section class="controls">
+  <div class="control-group">
+    <label class="lbl" for="demo">call</label>
+    <select id="demo"></select>
+  </div>
+
+  <!-- Panel 6: the mode toggle. This is the argument the demo exists to make. -->
+  <div class="control-group modes" role="radiogroup" aria-label="Detection mode">
+    <label class="lbl">mode</label>
+    <div class="segmented">
+      <button class="seg" id="mode-triggered" data-mode="triggered" role="radio" aria-checked="true">
+        Sentinel <small>triggered</small>
+      </button>
+      <button class="seg" id="mode-always_on" data-mode="always_on" role="radio" aria-checked="false">
+        Naive <small>score every call</small>
+      </button>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label class="lbl" for="fast">replay</label>
+    <label class="check"><input type="checkbox" id="fast"> fast (rehearsal)</label>
+  </div>
+
+  <div class="control-group grow"></div>
+
+  <div class="control-group right">
+    <div class="falsealarm" id="falsealarm" data-state="idle">
+      <div class="fa-count" id="fa-count">0</div>
+      <div class="fa-label">false alarms<br><small id="fa-note">on a call we know is genuine</small></div>
+    </div>
+    <button class="run" id="run">Run call</button>
+    <button class="stop" id="stop" disabled>Stop</button>
+  </div>
+</section>
+
+<main class="grid">
+
+  <!-- Panel 4: the verdict. -->
+  <section class="panel verdict" id="verdict-panel" data-state="IDLE">
+    <h2>Verdict</h2>
+    <div class="verdict-state" id="verdict-state">READY</div>
+    <div class="verdict-numbers">
+      <div class="num">
+        <span class="num-v" id="verdict-risk">—</span>
+        <span class="num-k">fused risk</span>
+      </div>
+      <div class="num">
+        <span class="num-v" id="verdict-conf">—</span>
+        <span class="num-k">confidence</span>
+      </div>
+      <div class="num">
+        <span class="num-v" id="verdict-windows">—</span>
+        <span class="num-k">windows</span>
+      </div>
+    </div>
+    <!-- SPEC §12: the risk number is never presented naked. -->
+    <div class="band-note" id="band-note">abstention band —</div>
+    <ul class="reasons" id="reasons"></ul>
+    <div class="action" id="action" hidden></div>
+  </section>
+
+  <!-- Panel 2: the transcript. -->
+  <section class="panel transcript">
+    <h2>Transcript <span class="sub" id="transcript-sub"></span></h2>
+    <!-- Pinned, NOT inside the scroller. The disclosure that some of these
+         lines are injected has to be readable at every moment of the run, and
+         a transcript that auto-scrolls would carry it off the top. -->
+    <div class="overlay-note" id="overlay-note" hidden></div>
+    <div class="scroll" id="transcript">
+      <p class="placeholder">Waiting for the call to start.</p>
+    </div>
+  </section>
+
+  <!-- Panel 3: the risk timeline. -->
+  <section class="panel timeline">
+    <h2>Risk timeline
+      <span class="legend">
+        <span class="key key-spk">voice match</span>
+        <span class="key key-cm">synthesis artifacts</span>
+        <span class="key key-gate">deep verification active</span>
+        <span class="key key-band">abstention band</span>
+      </span>
+    </h2>
+    <canvas id="canvas"></canvas>
+    <div class="timeline-note" id="timeline-note">
+      The voice check runs on every window. The artifact check runs only inside the
+      shaded region — that is the whole idea.
+    </div>
+  </section>
+
+  <!-- Panel 5: the evidence. -->
+  <section class="panel evidence">
+    <h2>Evidence <span class="sub" id="evidence-sub"></span></h2>
+    <div class="scroll" id="evidence">
+      <p class="placeholder">No suspicious segments.</p>
+    </div>
+    <div class="ids" id="ids"></div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span id="footer-stats">—</span>
+  <span class="spacer"></span>
+  <span id="footer-provenance"></span>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

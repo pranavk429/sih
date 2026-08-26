@@ -333,6 +333,44 @@ def test_every_event_carries_what_the_ui_needs(attack_run):
         )
 
 
+def test_the_pre_roll_never_scores_a_window_the_vad_refused(
+        orchestrator, cfg, demo_dir, reference):
+    """
+    The gate applies to the backfill too, not just the forward pass.
+
+    The pre-roll reaches back over windows that have already gone past, and it
+    used to call the countermeasure on them directly -- VAD and all. Silent
+    windows came back at ~0.99 (see test_vad_silence.py) and landed in the
+    evidence panel of a VERIFIED call. The genuine call is the one with silence
+    in it, so it is the one this has to be checked on.
+    """
+    events, stats = _replay(orchestrator, cfg, demo_dir, "genuine", reference,
+                            ground_truth="bonafide")
+    scores = {}
+    for event in events:
+        if event["type"] == "risk_score":
+            scores.setdefault(event["seq"], {})[event["kind"]] = event
+
+    silent_but_scored = [
+        seq for seq, kinds in scores.items()
+        if kinds.get("speaker", {}).get("status") == "SILENT"
+        and kinds.get("cm", {}).get("status") == "OK"
+    ]
+    assert not silent_but_scored, (
+        f"windows {silent_but_scored} were refused by the VAD for the speaker "
+        "model but scored anyway by the countermeasure"
+    )
+    assert stats.windows_silent > 0, (
+        "the genuine call has silent windows in it -- if it stopped having "
+        "them, this test no longer proves anything and needs a new fixture"
+    )
+    for segment in stats.verdict.segments:
+        assert segment.cm_risk is None or segment.speaker_risk is not None, (
+            f"evidence segment at {segment.t_start_ms} ms rests on the "
+            "countermeasure alone, with no voice-match score beside it"
+        )
+
+
 def test_a_stopped_run_ends_cleanly(orchestrator, cfg, demo_dir, reference):
     """`POST /stop` in the server rides on this. A half-finished run still
     produces a final verdict rather than leaving the UI hanging."""

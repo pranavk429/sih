@@ -88,6 +88,52 @@ def test_silence_is_refused_by_the_speaker_adapter(cfg, speaker_encoder):
         speaker_encoder.embed(np.zeros(0, dtype=np.float32), cfg.audio.sample_rate)
 
 
+def test_unguarded_countermeasure_confidently_flags_silence(cfg, countermeasure, demo_dir):
+    """
+    The other half of Gap 3, and the reason the VAD gate sits inside
+    Orchestrator._run_deep rather than in its callers.
+
+    Fed a window with no speech in it the probe does not crash and does not
+    abstain -- it mostly returns a near-certain "synthetic". It is the mirror of
+    the Resemblyzer behaviour below: a model handed no speech still returns a
+    confident number, and the number is about nothing.
+
+    This was live until the UI made it visible. The pre-roll backfill called the
+    countermeasure without the VAD check, so nine silent windows of the GENUINE
+    demo call were scored (eight of them above 0.86) and listed as suspicious
+    evidence on a call the system had just verified.
+
+    Measured on this call's VAD-refused windows, not asserted universally: the
+    scores are not reliably high, they are reliably meaningless. One of the nine
+    came back at 0.17. That is the point -- there is no threshold that rescues a
+    score computed on silence, so the gate has to come first.
+    """
+    import os
+
+    from conftest import read_wav
+
+    pcm, sr = read_wav(os.path.join(demo_dir, "genuine.wav"))
+    vad = EnergyVad(cfg.audio)
+    win = int(cfg.audio.window_s * sr)
+    hop = int(cfg.audio.hop_s * sr)
+
+    refused = [
+        pcm[s:s + win]
+        for s in range(0, len(pcm) - win, hop)
+        if not vad.is_speech(pcm[s:s + win], sr)
+    ]
+    assert refused, "the genuine call has no VAD-refused windows to test with"
+
+    risks = [countermeasure.risk(w, sr) for w in refused]
+    flagged = [r for r in risks if r > cfg.decision.high_thr]
+    assert len(flagged) > len(risks) / 2, (
+        f"only {len(flagged)}/{len(risks)} silent windows score above high_thr "
+        f"(max {max(risks):.3f}). If this ever stops holding the docstring is "
+        "out of date -- but do NOT remove the gate. A score computed on silence "
+        "is meaningless whichever side of the threshold it lands on."
+    )
+
+
 def test_unguarded_resemblyzer_confidently_verifies_silence(cfg, speaker_encoder, demo_dir):
     """
     Why the guard above has to exist, pinned as a test.
