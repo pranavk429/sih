@@ -61,14 +61,23 @@ gating:
   hold_s: 10.0
 
 decision:
-  # Seeded from calibration.json eer_threshold (0.5326) with a deliberate
-  # abstention band around it. Anything inside the band is UNCERTAIN, which is
-  # a legitimate outcome, not an error (SPEC §7.4).
-  low_thr: 0.46
-  high_thr: 0.60
+  # NOT hand-picked. Copied verbatim from calibration.json -> decision_band,
+  # which derives them as eer_threshold (0.4220) -/+ half a standard deviation
+  # of each class's fused score. On the 119 pilot trials that band gives:
+  #   genuine -> 35 verified /  7 uncertain / 2 flagged
+  #   spoof   -> 61 flagged  / 11 uncertain / 3 verified
+  # Anything between the two is UNCERTAIN, which is the system working
+  # correctly, not failing (SPEC §7.4). Regenerate with scripts/fit_probe.py
+  # when the Kaggle full run lands; do not nudge these by hand and then claim
+  # the calibration produced them.
+  low_thr: 0.3636
+  high_thr: 0.4575
   fusion: mean              # mean | logistic
   min_windows: 2
-  evidence_risk_floor: 0.55
+  # Windows at or above this fused risk get listed in the evidence panel.
+  # Sits at the top of the band so the panel shows what actually pushed the
+  # verdict, not every window that merely wobbled.
+  evidence_risk_floor: 0.4575
 
 server:
   host: 127.0.0.1

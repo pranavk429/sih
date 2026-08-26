@@ -133,15 +133,15 @@ class GatingConfig:
 @dataclass(frozen=True)
 class DecisionConfig:
     # Fused risk below low_thr -> VERIFIED; above high_thr -> LIKELY_IMPERSONATION;
-    # between -> UNCERTAIN. Seeded from calibration.json's EER threshold.
-    low_thr: float = 0.42
-    high_thr: float = 0.62
+    # between -> UNCERTAIN. Copied from calibration.json's decision_band.
+    low_thr: float = 0.3636
+    high_thr: float = 0.4575
     # "mean" matches the pilot experiment; "logistic" uses calibration weights.
     fusion: str = "mean"
     # A verdict needs at least this many OK windows behind it.
     min_windows: int = 2
     # Windows at or above this fused risk are listed in the evidence panel.
-    evidence_risk_floor: float = 0.55
+    evidence_risk_floor: float = 0.4575
 
 
 @dataclass(frozen=True)

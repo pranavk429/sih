@@ -1,0 +1,78 @@
+{
+  "created_utc": "2026-08-26T12:19:58+00:00",
+  "dataset": "ASVspoof2019-LA pilot slice",
+  "degrade_profile": "mobile_voip",
+  "n_fit_examples": 117,
+  "n_fit_speakers": 40,
+  "n_test_trials": 119,
+  "n_test_speakers": 25,
+  "backbone": "facebook/wav2vec2-base",
+  "speaker_encoder": "resemblyzer-voice-encoder-v1",
+  "eer": 0.116818,
+  "eer_threshold": 0.422014,
+  "cm_only": {
+    "eer": 0.134848,
+    "eer_threshold": 0.707988
+  },
+  "score_stats": {
+    "cm": {
+      "bonafide": {
+        "mean": 0.365047,
+        "std": 0.233339
+      },
+      "spoof": {
+        "mean": 0.845943,
+        "std": 0.150052
+      }
+    },
+    "speaker": {
+      "bonafide": {
+        "mean": 0.126834,
+        "std": 0.029126
+      },
+      "spoof": {
+        "mean": 0.155439,
+        "std": 0.04453
+      }
+    },
+    "fused": {
+      "bonafide": {
+        "mean": 0.24594,
+        "std": 0.116853
+      },
+      "spoof": {
+        "mean": 0.500691,
+        "std": 0.071015
+      }
+    }
+  },
+  "fusion": {
+    "strategy": "mean",
+    "weights": [
+      0.5,
+      0.5
+    ]
+  },
+  "decision_band": {
+    "low_thr": 0.363587,
+    "high_thr": 0.457521,
+    "rule": "eer_threshold -/+ 0.5 * per-class fused std",
+    "outcomes_on_test_trials": {
+      "genuine_verified": 35,
+      "genuine_uncertain": 7,
+      "genuine_flagged": 2,
+      "spoof_flagged": 61,
+      "spoof_uncertain": 11,
+      "spoof_verified": 3
+    },
+    "note": "Copy these into config.yaml decision.low_thr/high_thr. Anything between them is UNCERTAIN, which is the system working, not failing."
+  },
+  "reproduction_check": {
+    "reference_file": "../../detector/results/pilot_results_v2_leakfree.json",
+    "expected_eer": 0.11681818181818182,
+    "observed_eer": 0.116818,
+    "drift_pp": 0.0,
+    "tolerance_pp": 0.1
+  },
+  "notes": "PILOT SCALE \u2014 119 test trials, 25 test speakers, English-only benchmark, CPU/MPS. Directionally honest, not statistically final. Replace this file when the Kaggle full run lands; every verdict in the evidence log carries the calibration_id it was decided under, so old decisions stay attributable to the old calibration."
+}
