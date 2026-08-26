@@ -1,0 +1,33 @@
+/Users/pranav1296/SIH/detector/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/pranav1296/SIH/detector/venv/lib/python3.9/site-packages/transformers/configuration_utils.py:335: UserWarning: Passing `gradient_checkpointing` to a config initialization is deprecated and will be removed in v5 Transformers. Using `model.gradient_checkpointing_enable()` instead, or if you are using the `Trainer` API, pass `gradient_checkpointing=True` in your `TrainingArguments`.
+  warnings.warn(
+FIT group: 40 speakers, 117 files
+TEST group: 25 speakers (zero speaker overlap with FIT group, verified below)
+speaker-disjointness verified: no leakage between fit and test sets
+
+loading task-naive backbone (facebook/wav2vec2-base)...
+extracting FIT embeddings...
+fitting logistic regression probe on FIT embeddings...
+  fit-set training accuracy: 94.0% (n=117)
+
+Loaded the voice encoder model on cpu in 0.01 seconds.
+119 TEST trials (44 genuine / 75 spoof)
+
+--- pass 1: CLEAN baseline (probe CM only) ---
+  bonafide score stats: mean=0.246 std=0.180
+  spoof score stats:    mean=0.808 std=0.182
+
+--- pass 2: DEGRADED (Opus 8kbps + 5% packet loss), probe CM only ---
+
+--- pass 3: DEGRADED + ENROLLMENT FUSION ---
+
+============================================================
+LEAK-FREE PILOT RESULTS  (n=119 test trials, 25 test speakers, 117 fit examples)
+============================================================
+1. Clean baseline EER (probe CM only)..... 7.9%
+2. Degraded EER (probe CM only)............ 13.5%
+3. Degraded + enrollment fusion EER........ 11.7%
+============================================================
+
+saved to /Users/pranav1296/SIH/detector/src/../results/pilot_results_v2_leakfree.json

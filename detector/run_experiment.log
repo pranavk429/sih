@@ -1,0 +1,21 @@
+/Users/pranav1296/SIH/detector/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+25 speakers usable for the enrollment experiment
+loading CM model (wav2vec2-XLSR spoof classifier)...
+computing enrollment embeddings from held-out clean references...
+Loaded the voice encoder model on cpu in 0.02 seconds.
+119 test trials (44 genuine / 75 spoof)
+
+--- pass 1: CLEAN baseline (CM only) ---
+--- pass 2: DEGRADED (Opus 8kbps + 5% packet loss), CM only ---
+--- pass 3: DEGRADED + ENROLLMENT FUSION ---
+
+============================================================
+PILOT RESULTS  (n=119 trials, 25 speakers)
+============================================================
+1. Clean baseline EER (CM only)........... 0.0%
+2. Degraded EER (CM only)................. 0.0%
+3. Degraded + enrollment fusion EER....... 0.0%
+============================================================
+
+saved to /Users/pranav1296/SIH/detector/src/../results/pilot_results.json

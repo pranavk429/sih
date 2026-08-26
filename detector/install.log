@@ -1,0 +1,216 @@
+Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
+Collecting torch
+  Downloading https://mirrors.aliyun.com/pypi/packages/ae/95/ae26263aceb3d57b821179f827d0e321373ed49423e603dd5906ab14a730/torch-2.8.0-cp39-none-macosx_11_0_arm64.whl (73.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 73.6/73.6 MB 65.3 kB/s  0:22:10
+Collecting torchaudio
+  Downloading https://mirrors.aliyun.com/pypi/packages/98/53/22f70997e909e712ede5625ed7612ec093eaf11e1af77cf7d44124edd3d7/torchaudio-2.8.0-cp39-cp39-macosx_11_0_arm64.whl (1.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.9/1.9 MB 68.0 kB/s  0:00:26
+Collecting transformers
+  Downloading https://mirrors.aliyun.com/pypi/packages/03/b8/e484ef633af3887baeeb4b6ad12743363af7cce68ae51e938e00aaa0529d/transformers-4.57.6-py3-none-any.whl (12.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.0/12.0 MB 70.3 kB/s  0:02:57
+Collecting datasets
+  Downloading https://mirrors.aliyun.com/pypi/packages/fc/d5/0d563ea3c205eee226dc8053cf7682a8ac588db8acecd0eda2b587987a0b/datasets-4.5.0-py3-none-any.whl (515 kB)
+Collecting soundfile
+  Downloading https://mirrors.aliyun.com/pypi/packages/a0/e5/58fd1a8d7b26fc113af244f966ee3aecf03cb9293cb935daaddc1e455e18/soundfile-0.13.1-py2.py3-none-macosx_11_0_arm64.whl (1.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 67.0 kB/s  0:00:16
+Collecting librosa
+  Downloading https://mirrors.aliyun.com/pypi/packages/b5/ba/c63c5786dfee4c3417094c4b00966e61e4a63efecee22cb7b4c0387dda83/librosa-0.11.0-py3-none-any.whl (260 kB)
+Collecting scikit-learn
+  Downloading https://mirrors.aliyun.com/pypi/packages/83/74/f64379a4ed5879d9db744fe37cfe1978c07c66684d2439c3060d19a536d8/scikit_learn-1.6.1-cp39-cp39-macosx_12_0_arm64.whl (11.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.1/11.1 MB 68.4 kB/s  0:02:41
+Collecting resemblyzer
+  Downloading https://mirrors.aliyun.com/pypi/packages/d9/b5/d897d5de5b2123a1ad5d32e8e007d83f76582f5c32c60992577263bd7c7e/Resemblyzer-0.1.4-py3-none-any.whl (15.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╸        12.8/15.7 MB 70.6 kB/s eta 0:00:42
+  WARNING: Connection timed out while downloading.
+  WARNING: Attempting to resume incomplete download (12.8 MB/15.7 MB, attempt 1)
+  Resuming download https://mirrors.aliyun.com/pypi/packages/d9/b5/d897d5de5b2123a1ad5d32e8e007d83f76582f5c32c60992577263bd7c7e/Resemblyzer-0.1.4-py3-none-any.whl (12.8 MB/15.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 15.7/15.7 MB 48.2 kB/s  0:01:00
+Collecting filelock (from torch)
+  Downloading https://mirrors.aliyun.com/pypi/packages/42/14/42b2651a2f46b022ccd948bca9f2d5af0fd8929c4eec235b8d6d844fbe67/filelock-3.19.1-py3-none-any.whl (15 kB)
+Collecting typing-extensions>=4.10.0 (from torch)
+  Downloading https://mirrors.aliyun.com/pypi/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Collecting sympy>=1.13.3 (from torch)
+  Downloading https://mirrors.aliyun.com/pypi/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl (6.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 45.5 kB/s  0:02:14
+Collecting networkx (from torch)
+  Downloading https://mirrors.aliyun.com/pypi/packages/d5/f0/8fbc882ca80cf077f1b246c0e3c3465f7f415439bdea6b899f6b19f61f70/networkx-3.2.1-py3-none-any.whl (1.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 40.9 kB/s  0:00:39
+Collecting jinja2 (from torch)
+  Downloading https://mirrors.aliyun.com/pypi/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl (134 kB)
+Collecting fsspec (from torch)
+  Downloading https://mirrors.aliyun.com/pypi/packages/eb/02/a6b21098b1d5d6249b7c5ab69dde30108a71e4e819d4a9778f1de1d5b70d/fsspec-2025.10.0-py3-none-any.whl (200 kB)
+Collecting huggingface-hub<1.0,>=0.34.0 (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/a8/af/48ac8483240de756d2438c380746e7130d1c6f75802ef22f3c6d49982787/huggingface_hub-0.36.2-py3-none-any.whl (566 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 566.4/566.4 kB 44.7 kB/s  0:00:12
+Collecting numpy>=1.17 (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/96/ff/06d1aa3eeb1c614eda245c1ba4fb88c483bee6520d361641331872ac4b82/numpy-2.0.2-cp39-cp39-macosx_14_0_arm64.whl (5.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.3/5.3 MB 48.3 kB/s  0:02:01
+Collecting packaging>=20.0 (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl (129 kB)
+Collecting pyyaml>=5.1 (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/ae/92/861f152ce87c452b11b9d0977952259aa7df792d71c1053365cc7b09cc08/pyyaml-6.0.3-cp39-cp39-macosx_11_0_arm64.whl (174 kB)
+Collecting regex!=2019.12.17 (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/4b/d2/a2fef3717deaff647d7de2bccf899a576c7eaf042b6b271fc4474515fe97/regex-2026.1.15-cp39-cp39-macosx_11_0_arm64.whl (288 kB)
+Collecting requests (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl (64 kB)
+Collecting tokenizers<=0.23.0,>=0.22.0 (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/2e/47/174dca0502ef88b28f1c9e06b73ce33500eedfac7a7692108aec220464e7/tokenizers-0.22.2-cp39-abi3-macosx_11_0_arm64.whl (3.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.0/3.0 MB 34.2 kB/s  0:01:18
+Collecting safetensors>=0.4.3 (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/e8/00/374c0c068e30cd31f1e1b46b4b5738168ec79e7689ca82ee93ddfea05109/safetensors-0.7.0-cp38-abi3-macosx_11_0_arm64.whl (447 kB)
+Collecting tqdm>=4.27 (from transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/f9/1c/01bfd571a64e7f270e6bab5e33777debe0edc56759233ce84f27dec92d14/tqdm-4.70.0-py3-none-any.whl (80 kB)
+Collecting hf-xet<2.0.0,>=1.1.3 (from huggingface-hub<1.0,>=0.34.0->transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/4b/69/55b8dcf636142ae660fec1869fcac14c4da2e8412e14d6eee1523be77e9f/hf_xet-1.6.0-cp38-abi3-macosx_11_0_arm64.whl (3.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.9/3.9 MB 30.5 kB/s  0:02:26
+Collecting pyarrow>=21.0.0 (from datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/3e/cc/ce4939f4b316457a083dc5718b3982801e8c33f921b3c98e7a93b7c7491f/pyarrow-21.0.0-cp39-cp39-macosx_12_0_arm64.whl (31.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 31.2/31.2 MB 36.2 kB/s  0:14:27
+Collecting dill<0.4.1,>=0.3.0 (from datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/50/3d/9373ad9c56321fdab5b41197068e1d8c25883b3fea29dd361f9b55116869/dill-0.4.0-py3-none-any.whl (119 kB)
+Collecting pandas (from datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/48/4a/2d8b67632a021bced649ba940455ed441ca854e57d6e7658a6024587b083/pandas-2.3.3-cp39-cp39-macosx_11_0_arm64.whl (10.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.8/10.8 MB 39.3 kB/s  0:04:29
+Collecting httpx<1.0.0 (from datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl (73 kB)
+Collecting xxhash (from datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/ee/4d/33749bf0dbb4bf784302377f70c6e2f205d6bb17589ba9075a3322849f62/xxhash-4.0.1-cp39-cp39-macosx_11_0_arm64.whl (36 kB)
+Collecting multiprocess<0.70.19 (from datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/6c/28/dd72947e59a6a8c856448a5e74da6201cb5502ddff644fbc790e4bd40b9a/multiprocess-0.70.18-py39-none-any.whl (133 kB)
+Collecting aiohttp!=4.0.0a0,!=4.0.0a1 (from fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/d5/34/8413eafee3421ade2d6ce9e7c0da1213e1d7f0049be09dcdc342b03a39ba/aiohttp-3.13.5-cp39-cp39-macosx_11_0_arm64.whl (499 kB)
+Collecting anyio (from httpx<1.0.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/38/0e/27be9fdef66e72d64c0cdc3cc2823101b80585f8119b5c112c2e8f5f7dab/anyio-4.12.1-py3-none-any.whl (113 kB)
+Collecting certifi (from httpx<1.0.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl (136 kB)
+Collecting httpcore==1.* (from httpx<1.0.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl (78 kB)
+Collecting idna (from httpx<1.0.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/57/b0/0e52c878c53f245edd3a11020f20979b3f490f245af532c7cae3027754b5/idna-3.19-py3-none-any.whl (68 kB)
+Collecting h11>=0.16 (from httpcore==1.*->httpx<1.0.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl (37 kB)
+Collecting cffi>=1.0 (from soundfile)
+  Downloading https://mirrors.aliyun.com/pypi/packages/3d/de/38d9726324e127f727b4ecc376bc85e505bfe61ef130eaf3f290c6847dd4/cffi-2.0.0-cp39-cp39-macosx_11_0_arm64.whl (180 kB)
+Collecting audioread>=2.1.9 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/7e/16/fbe8e1e185a45042f7cd3a282def5bb8d95bb69ab9e9ef6a5368aa17e426/audioread-3.1.0-py3-none-any.whl (23 kB)
+Collecting numba>=0.51.0 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/28/14/a5baa1f2edea7b49afa4dc1bb1b126645198cf1075186853b5b497be826e/numba-0.60.0-cp39-cp39-macosx_11_0_arm64.whl (2.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.7/2.7 MB 51.4 kB/s  0:01:02
+Collecting scipy>=1.6.0 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl (30.3 MB)
+     ━━━━━━━━━━━━━━╸                          11.0/30.3 MB 47.4 kB/s eta 0:06:48
+  WARNING: Connection timed out while downloading.
+  WARNING: Attempting to resume incomplete download (11.0 MB/30.3 MB, attempt 1)
+  WARNING: Retrying (Retry(total=19, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x1067af0a0>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl
+  WARNING: Retrying (Retry(total=18, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x110737490>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl
+  WARNING: Retrying (Retry(total=17, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x110737040>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl
+  WARNING: Retrying (Retry(total=16, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x110737f40>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl
+  WARNING: Retrying (Retry(total=15, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x11073c190>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl
+  WARNING: Retrying (Retry(total=14, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x11073c340>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl
+  WARNING: Retrying (Retry(total=13, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x11073c4f0>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl
+  WARNING: Retrying (Retry(total=12, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x11073c6a0>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl
+  Resuming download https://mirrors.aliyun.com/pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl (11.0 MB/30.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━            22.0/30.3 MB 47.4 kB/s eta 0:02:56
+  WARNING: Connection timed out while downloading.
+  WARNING: Attempting to resume incomplete download (22.0 MB/30.3 MB, attempt 2)
+  Resuming download https://mirrors.aliyun.com/pypi/packages/5c/c0/e71b94b20ccf9effb38d7147c0064c08c622309fd487b1b677771a97d18c/scipy-1.13.1-cp39-cp39-macosx_12_0_arm64.whl (22.0 MB/30.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 30.3/30.3 MB 68.1 kB/s  0:02:02
+Collecting joblib>=1.0 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/7b/91/984aca2ec129e2757d1e4e3c81c3fcda9d0f85b74670a094cc443d9ee949/joblib-1.5.3-py3-none-any.whl (309 kB)
+Collecting decorator>=4.3.0 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl (10 kB)
+Collecting pooch>=1.1 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl (67 kB)
+Collecting soxr>=0.3.2 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/95/96/618ee3e271b0e450e96d7d2ab6b44f4fb09f46ef363f79430ef306b62a71/soxr-1.1.0-cp39-cp39-macosx_11_0_arm64.whl (167 kB)
+Collecting lazy_loader>=0.1 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/8a/a1/8d812e53a5da1687abb10445275d41a8b13adb781bbf7196ddbcf8d88505/lazy_loader-0.5-py3-none-any.whl (8.0 kB)
+Collecting msgpack>=1.0 (from librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/6c/3a/7d4077e8ae720b29d2b299a9591969f0d105146960681ea6f4121e6d0f8d/msgpack-1.1.2-cp39-cp39-macosx_11_0_arm64.whl (84 kB)
+Collecting threadpoolctl>=3.1.0 (from scikit-learn)
+  Downloading https://mirrors.aliyun.com/pypi/packages/32/d5/f9a850d79b0851d1d4ef6456097579a9005b31fea68726a4ae5f2d82ddd9/threadpoolctl-3.6.0-py3-none-any.whl (18 kB)
+Collecting webrtcvad>=2.0.10 (from resemblyzer)
+  Downloading https://mirrors.aliyun.com/pypi/packages/89/34/e2de2d97f3288512b9ea56f92e7452f8207eb5a0096500badf9dfd48f5e6/webrtcvad-2.0.10.tar.gz (66 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting typing (from resemblyzer)
+  Downloading https://mirrors.aliyun.com/pypi/packages/05/d9/6eebe19d46bd05360c9a9aae822e67a80f9242aabbfc58b641b957546607/typing-3.7.4.3.tar.gz (78 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting aiohappyeyeballs>=2.5.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/0f/15/5bf3b99495fb160b63f95972b81750f18f7f4e02ad051373b669d17d44f2/aiohappyeyeballs-2.6.1-py3-none-any.whl (15 kB)
+Collecting aiosignal>=1.4.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/fb/76/641ae371508676492379f16e2fa48f4e2c11741bd63c48be4b12a6b09cba/aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+Collecting async-timeout<6.0,>=4.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/fe/ba/e2081de779ca30d473f21f5b30e0e737c438205440784c7dfc81efc2b029/async_timeout-5.0.1-py3-none-any.whl (6.2 kB)
+Collecting attrs>=17.3.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl (67 kB)
+Collecting frozenlist>=1.1.1 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/4b/de/ad9d82ca8e5fa8f0c636e64606553c79e2b859ad253030b62a21fe9986f5/frozenlist-1.8.0-cp39-cp39-macosx_11_0_arm64.whl (50 kB)
+Collecting multidict<7.0,>=4.5 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/83/9c/1d2a283d9c6f31e260cb6c2fccadc3edcf6c4c14ee0929cd2af4d2606dd7/multidict-6.7.1-cp39-cp39-macosx_11_0_arm64.whl (44 kB)
+Collecting propcache>=0.2.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/7c/19/b65d98ae21384518b291d9939e24a8aeac4fdb5101b732576f8f7540e834/propcache-0.4.1-cp39-cp39-macosx_11_0_arm64.whl (47 kB)
+Collecting yarl<2.0,>=1.17.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.10.0,>=2023.1.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/32/58/b8055273c203968e89808413ea4c984988b6649baabf10f4522e67c22d2f/yarl-1.22.0-cp39-cp39-macosx_11_0_arm64.whl (94 kB)
+Collecting pycparser (from cffi>=1.0->soundfile)
+  Downloading https://mirrors.aliyun.com/pypi/packages/a0/e3/59cd50310fc9b59512193629e1984c1f95e5c8ae6e5d8c69532ccc65a7fe/pycparser-2.23-py3-none-any.whl (118 kB)
+Collecting llvmlite<0.44,>=0.43.0dev0 (from numba>=0.51.0->librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl (28.8 MB)
+     ━━━━━━━━                                 5.8/28.8 MB 64.8 kB/s eta 0:05:56
+  WARNING: Connection timed out while downloading.
+  WARNING: Attempting to resume incomplete download (5.8 MB/28.8 MB, attempt 1)
+  Resuming download https://mirrors.aliyun.com/pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl (5.8 MB/28.8 MB)
+     ━━━━━━━━━━━╸                             8.4/28.8 MB 48.4 kB/s eta 0:07:02
+  WARNING: Connection timed out while downloading.
+  WARNING: Attempting to resume incomplete download (8.4 MB/28.8 MB, attempt 2)
+  WARNING: Retrying (Retry(total=19, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x11073c850>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl
+  WARNING: Retrying (Retry(total=18, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x1120b8490>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl
+  WARNING: Retrying (Retry(total=17, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x1120ba040>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl
+  WARNING: Retrying (Retry(total=16, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x1120bad00>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl
+  WARNING: Retrying (Retry(total=15, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x1120bacd0>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl
+  WARNING: Retrying (Retry(total=14, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x1120baa00>: Failed to establish a new connection: [Errno 8] nodename nor servname provided, or not known')': /pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl
+  Resuming download https://mirrors.aliyun.com/pypi/packages/cc/61/58c70aa0808a8cba825a7d98cc65bef4801b99328fba80837bfcb5fc767f/llvmlite-0.43.0-cp39-cp39-macosx_11_0_arm64.whl (8.4 MB/28.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 28.8/28.8 MB 52.9 kB/s  0:06:45
+Collecting platformdirs>=2.5.0 (from pooch>=1.1->librosa)
+  Downloading https://mirrors.aliyun.com/pypi/packages/40/4b/2028861e724d3bd36227adfa20d3fd24c3fc6d52032f4a93c133be5d17ce/platformdirs-4.4.0-py3-none-any.whl (18 kB)
+Collecting charset_normalizer<4,>=2 (from requests->transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/d0/91/bc145e42f93d6601b9a26f5421af2d7c3093ae6e6d03b8e583c9cebbf530/charset_normalizer-3.5.1-cp39-cp39-macosx_10_9_universal2.whl (368 kB)
+Collecting urllib3<3,>=1.21.1 (from requests->transformers)
+  Downloading https://mirrors.aliyun.com/pypi/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl (131 kB)
+Collecting mpmath<1.4,>=1.1.0 (from sympy>=1.13.3->torch)
+  Downloading https://mirrors.aliyun.com/pypi/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl (536 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 56.7 kB/s  0:00:10
+Collecting exceptiongroup>=1.0.2 (from anyio->httpx<1.0.0->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/8a/0e/97c33bf5009bdbac74fd2beace167cab3f978feb69cc36f1ef79360d6c4e/exceptiongroup-1.3.1-py3-none-any.whl (16 kB)
+Collecting MarkupSafe>=2.0 (from jinja2->torch)
+  Downloading https://mirrors.aliyun.com/pypi/packages/fd/23/07a2cb9a8045d5f3f0890a8c3bc0859d7a47bfd9a560b563899bec7b72ed/markupsafe-3.0.3-cp39-cp39-macosx_11_0_arm64.whl (12 kB)
+Collecting python-dateutil>=2.8.2 (from pandas->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Collecting pytz>=2020.1 (from pandas->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/0f/7b/39c34ca613b0b198cb866466651b26b045e2009864c5183c979a3b83f383/pytz-2026.3.post1-py2.py3-none-any.whl (508 kB)
+Collecting tzdata>=2022.7 (from pandas->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/e5/6d/b53b99a9f2766d095985947a5782f1702cabb129a34f7a802d7197af832f/tzdata-2026.3-py2.py3-none-any.whl (348 kB)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas->datasets)
+  Downloading https://mirrors.aliyun.com/pypi/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl (11 kB)
+Building wheels for collected packages: webrtcvad, typing
+  Building wheel for webrtcvad (pyproject.toml): started
+  Building wheel for webrtcvad (pyproject.toml): finished with status 'done'
+  Created wheel for webrtcvad: filename=webrtcvad-2.0.10-cp39-cp39-macosx_10_9_universal2.whl size=55855 sha256=e4555c3c6366e2d7ab8d634bfb8553b1c3ba89af197dda4a1464732374a515ad
+  Stored in directory: /Users/pranav1296/Library/Caches/pip/wheels/7e/57/ee/49820824c98f82ccc54aa756302ea04d589a379b9458579a42
+  Building wheel for typing (pyproject.toml): started
+  Building wheel for typing (pyproject.toml): finished with status 'done'
+  Created wheel for typing: filename=typing-3.7.4.3-py3-none-any.whl size=26397 sha256=f7a576fb9ee36162397d582f115634b15b67957892a5f86eab3fb86fdb60ccb8
+  Stored in directory: /Users/pranav1296/Library/Caches/pip/wheels/0c/1b/4a/db2f3b99084d1418c6b99f2fc8a3e2976061430ea46f4872c4
+Successfully built webrtcvad typing
+Installing collected packages: webrtcvad, pytz, mpmath, xxhash, urllib3, tzdata, typing-extensions, typing, tqdm, threadpoolctl, sympy, six, safetensors, regex, pyyaml, pycparser, pyarrow, propcache, platformdirs, packaging, numpy, networkx, msgpack, MarkupSafe, llvmlite, joblib, idna, hf-xet, h11, fsspec, frozenlist, filelock, dill, decorator, charset_normalizer, certifi, audioread, attrs, async-timeout, aiohappyeyeballs, soxr, scipy, requests, python-dateutil, numba, multiprocess, multidict, lazy_loader, jinja2, httpcore, exceptiongroup, cffi, aiosignal, yarl, torch, soundfile, scikit-learn, pooch, pandas, huggingface-hub, anyio, torchaudio, tokenizers, librosa, httpx, aiohttp, transformers, resemblyzer, datasets
+
+Successfully installed MarkupSafe-3.0.3 aiohappyeyeballs-2.6.1 aiohttp-3.13.5 aiosignal-1.4.0 anyio-4.12.1 async-timeout-5.0.1 attrs-26.1.0 audioread-3.1.0 certifi-2026.7.22 cffi-2.0.0 charset_normalizer-3.5.1 datasets-4.5.0 decorator-5.3.1 dill-0.4.0 exceptiongroup-1.3.1 filelock-3.19.1 frozenlist-1.8.0 fsspec-2025.10.0 h11-0.16.0 hf-xet-1.6.0 httpcore-1.0.9 httpx-0.28.1 huggingface-hub-0.36.2 idna-3.19 jinja2-3.1.6 joblib-1.5.3 lazy_loader-0.5 librosa-0.11.0 llvmlite-0.43.0 mpmath-1.3.0 msgpack-1.1.2 multidict-6.7.1 multiprocess-0.70.18 networkx-3.2.1 numba-0.60.0 numpy-2.0.2 packaging-26.3 pandas-2.3.3 platformdirs-4.4.0 pooch-1.9.0 propcache-0.4.1 pyarrow-21.0.0 pycparser-2.23 python-dateutil-2.9.0.post0 pytz-2026.3.post1 pyyaml-6.0.3 regex-2026.1.15 requests-2.32.5 resemblyzer-0.1.4 safetensors-0.7.0 scikit-learn-1.6.1 scipy-1.13.1 six-1.17.0 soundfile-0.13.1 soxr-1.1.0 sympy-1.14.0 threadpoolctl-3.6.0 tokenizers-0.22.2 torch-2.8.0 torchaudio-2.8.0 tqdm-4.70.0 transformers-4.57.6 typing-3.7.4.3 typing-extensions-4.16.0 tzdata-2026.3 urllib3-2.6.3 webrtcvad-2.0.10 xxhash-4.0.1 yarl-1.22.0

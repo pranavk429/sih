@@ -1,0 +1,24 @@
+# Environments
+detector/venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+
+# Data — ASVspoof pilot slice, re-fetchable via detector/src/fetch_data.py
+detector/data/
+
+# Model caches
+**/.cache/
+prototype/artifacts/models/
+
+# Generated demo audio + media (regenerate with scripts/make_demo_calls.py)
+prototype/artifacts/demo/*.wav
+prototype/artifacts/media/
+
+# Runtime logs
+prototype/artifacts/evidence/*.jsonl
+
+# Large binaries that live outside the build
+*.pptx
+*.pdf
+ppt-preview/

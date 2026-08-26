@@ -1,0 +1,11 @@
+{
+  "n_trials": 119,
+  "n_speakers": 25,
+  "n_genuine": 44,
+  "n_spoof": 75,
+  "degrade_profile": "mobile_voip",
+  "eer_clean_cm_only": 0.0,
+  "eer_degraded_cm_only": 0.0,
+  "eer_degraded_plus_enrollment": 0.0,
+  "note": "PILOT SCALE on ASVspoof2019 LA (English-centric benchmark, CPU-only inference, no GPU). Directionally honest, not statistically final. Full-scale run on Indian-language data happens on Kaggle -- see notebooks/kaggle_full_run.ipynb."
+}

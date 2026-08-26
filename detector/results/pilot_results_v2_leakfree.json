@@ -1,0 +1,13 @@
+{
+  "n_test_trials": 119,
+  "n_test_speakers": 25,
+  "n_fit_examples": 117,
+  "n_fit_speakers": 40,
+  "fit_train_accuracy": 0.9401709401709402,
+  "degrade_profile": "mobile_voip",
+  "backbone": "facebook/wav2vec2-base (self-supervised, task-naive)",
+  "eer_clean_cm_only": 0.07878787878787878,
+  "eer_degraded_cm_only": 0.13484848484848483,
+  "eer_degraded_plus_enrollment": 0.11681818181818182,
+  "note": "PILOT SCALE, leak-free version. v1 used a pretrained classifier that had memorized ASVspoof2019 (0.0% EER, std=0.003 on bonafide scores -- textbook overfitting). This version fits its own linear probe on a speaker-disjoint fit set using a backbone that never saw the spoof-detection task. Still pilot scale (~119 test trials, English-centric benchmark, CPU-only). Full-scale run on Indian-language data happens on Kaggle -- see notebooks/kaggle_full_run.py."
+}
