@@ -17,7 +17,7 @@ import os
 import sys
 from typing import Any, Callable, Tuple
 
-from sentinel.config import ROOT, Config
+from sentinel.config import ROOT, Config, prefer_local_model_cache
 
 DETECTOR_SRC = os.path.normpath(os.path.join(os.path.dirname(ROOT), "detector", "src"))
 
@@ -36,6 +36,7 @@ def _ensure_on_path() -> None:
 def probe_backbone(device: str = "auto") -> Any:
     """detector.probe_model.ProbeBackbone -- frozen, task-naive wav2vec2."""
     _ensure_on_path()
+    prefer_local_model_cache()
     from probe_model import ProbeBackbone
 
     return ProbeBackbone(device=None if device == "auto" else device)

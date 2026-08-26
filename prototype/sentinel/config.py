@@ -38,6 +38,27 @@ _PATH_FIELDS = frozenset(
 )
 
 
+def prefer_local_model_cache() -> None:
+    """
+    Called by every from_pretrained()-style loader in this package -- never by
+    scripts/prefetch_models.py, which needs the real network for its first,
+    cache-filling pass, and never at import time here, since this module is
+    also that script's first import.
+
+    Left unset, huggingface_hub tries the network before falling back to the
+    local cache. That is fine when online, but on a genuinely offline machine
+    it means a retry-and-backoff tax paid once per library (transformers,
+    sentence-transformers, faster-whisper) before every model even starts --
+    the opposite of SPEC §4's "everything must work with the network
+    unplugged." Setting these two env vars skips the network attempt
+    outright, so a cold demo laptop with no WiFi loads exactly as fast as one
+    with WiFi. setdefault(), not assignment: an operator who has deliberately
+    exported these to force a fresh check keeps that choice.
+    """
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
+
 def resolve(path: str) -> str:
     """
     Resolve a possibly-relative path against the prototype root.

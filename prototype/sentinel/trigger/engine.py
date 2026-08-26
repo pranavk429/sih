@@ -107,6 +107,9 @@ class SemanticMatcher:
     def __init__(self, cfg: ModelConfig) -> None:
         from sentence_transformers import SentenceTransformer
 
+        from sentinel.config import prefer_local_model_cache
+
+        prefer_local_model_cache()
         self.model_id = cfg.trigger_encoder_id
         self._model = SentenceTransformer(cfg.trigger_encoder_id, cache_folder=cfg.hf_cache())
         sentences, keys = canonical_sentences()

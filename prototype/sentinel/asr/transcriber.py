@@ -40,6 +40,9 @@ class Transcriber:
     def __init__(self, cfg: ModelConfig) -> None:
         from faster_whisper import WhisperModel
 
+        from sentinel.config import prefer_local_model_cache
+
+        prefer_local_model_cache()
         self.model_id = f"faster-whisper:{cfg.asr_model_id}:{cfg.asr_compute_type}"
         self._model = WhisperModel(
             cfg.asr_model_id,
