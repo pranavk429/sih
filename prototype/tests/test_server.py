@@ -279,3 +279,26 @@ def test_the_run_writes_its_own_evidence_log(app, client, cfg, demo_dir):
         os.path.abspath(cfg.paths.evidence_dir)
     assert runner.session.meta["run_id"] in log.path
     client.post("/stop")
+
+
+# --- the audio path is not a free filesystem handle -------------------------
+def test_an_audio_path_outside_the_demo_directory_is_refused(client, demo_dir):
+    """
+    /start accepts an arbitrary `audio` string from the browser. Before the
+    fence it became a filesystem path verbatim, so anything reaching the
+    endpoint could ask the server to open any file the process could read and
+    stream it back as a "call". The demo directory is the whole allowed world.
+    """
+    for attempt in ("../../../../etc/passwd", "/etc/passwd", "../config.yaml"):
+        response = client.post("/start", json={"audio": attempt})
+        assert response.status_code == 404, f"{attempt} was not refused"
+        assert "outside the demo directory" in response.json()["error"]
+
+
+def test_an_audio_path_inside_the_demo_directory_still_works(client, demo_dir):
+    """The fence must not break the thing it is fencing."""
+    response = client.post("/start", json={"audio": "enrol.wav", "fast": True})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["started"] is True
+    client.post("/stop")

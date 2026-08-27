@@ -232,7 +232,13 @@ class Runner:
             ground_truth = None
             title = None
             if audio:
-                path = audio
+                demo_root = os.path.realpath(self.cfg.paths.demo_dir)
+                candidate = os.path.realpath(os.path.join(demo_root, audio))
+                if os.path.commonpath([demo_root, candidate]) != demo_root:
+                    raise KeyError(
+                        f"audio path {audio!r} is outside the demo directory"
+                    )
+                path = candidate
             else:
                 if manifest is None:
                     raise FileNotFoundError(
