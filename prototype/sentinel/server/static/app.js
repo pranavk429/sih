@@ -82,6 +82,10 @@ function apply(event) {
   switch (event.type) {
     case 'hello':
       state.hello = event;
+      if (!modeManuallySet && event.default_mode) {
+        selectedMode = event.default_mode;
+        state.mode = event.default_mode;
+      }
       break;
 
     case 'run_meta':
@@ -653,6 +657,7 @@ function frame() {
 
 // ---------------------------------------------------------------- controls
 let selectedMode = 'triggered';
+let modeManuallySet = false;
 
 async function loadDemos() {
   const demos = await (await fetch('/demos')).json();
@@ -674,6 +679,7 @@ async function loadDemos() {
 
 function setMode(mode) {
   selectedMode = mode;
+  modeManuallySet = true;
   state.mode = mode;
   touch();
 }
