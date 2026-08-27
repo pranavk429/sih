@@ -54,8 +54,10 @@ class ResemblyzerSpeakerEncoder:
 
         try:
             emb = self._embed(pcm, sr)
-        except (ValueError, IndexError, RuntimeError) as exc:
-            # preprocess_wav's own VAD removed everything.
+        except (ValueError, IndexError, RuntimeError, AssertionError) as exc:
+            # preprocess_wav's own VAD removed everything. AssertionError is a
+            # real failure mode too -- webrtcvad/librosa raise it on some
+            # edge-case frames, and it must degrade the same way as the rest.
             raise SilentAudio(f"no voiced audio to embed ({exc})") from exc
 
         emb = np.asarray(emb, dtype=np.float32)

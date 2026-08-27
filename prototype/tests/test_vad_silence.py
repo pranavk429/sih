@@ -164,3 +164,24 @@ def test_unguarded_resemblyzer_confidently_verifies_silence(cfg, speaker_encoder
         f"silence scores {risk_of_silence:.3f}, low_thr is {cfg.decision.low_thr} "
         "-- this is the failure the min_rms guard prevents"
     )
+
+
+def test_an_assertion_from_the_encoder_degrades_to_silent_audio(
+    speaker_encoder, monkeypatch
+):
+    """
+    Resemblyzer does not only fail in the ways the SPEC anticipated.
+    preprocess_wav runs webrtcvad, which raises bare AssertionError on some
+    edge-case frame lengths rather than ValueError. Uncaught, that kills the
+    pipeline thread mid-call -- exactly the crash the SILENT status exists to
+    turn into a labelled, survivable non-answer.
+    """
+    from sentinel.models.resemblyzer_spk import SilentAudio
+
+    def boom(pcm, sr):
+        raise AssertionError("webrtcvad frame length")
+
+    monkeypatch.setattr(speaker_encoder, "_embed", boom)
+
+    with pytest.raises(SilentAudio):
+        speaker_encoder.embed(tone(3.0), 16000)
