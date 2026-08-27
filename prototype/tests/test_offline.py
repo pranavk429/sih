@@ -75,16 +75,32 @@ def test_model_loading_does_not_reach_the_network(blocked_sockets, cfg):
 
 
 def test_trigger_semantics_loading_does_not_reach_the_network(blocked_sockets, cfg):
+    from huggingface_hub.errors import LocalEntryNotFoundError
+
     from sentinel.trigger.engine import TriggerEngine
 
-    engine = TriggerEngine(cfg.trigger, cfg.models)
+    try:
+        engine = TriggerEngine(cfg.trigger, cfg.models)
+    except LocalEntryNotFoundError:
+        pytest.skip(
+            f"{cfg.models.trigger_encoder_id} not in the local cache -- "
+            "run scripts/prefetch_models.py"
+        )
     assert engine.matcher.model_id
 
 
 def test_asr_loading_does_not_reach_the_network(blocked_sockets, cfg):
+    from huggingface_hub.errors import LocalEntryNotFoundError
+
     from sentinel.asr.transcriber import Transcriber
 
-    transcriber = Transcriber(cfg.models)
+    try:
+        transcriber = Transcriber(cfg.models)
+    except LocalEntryNotFoundError:
+        pytest.skip(
+            f"{cfg.models.asr_model_id} not in the local cache -- "
+            "run scripts/prefetch_models.py"
+        )
     assert transcriber.model_id
 
 
