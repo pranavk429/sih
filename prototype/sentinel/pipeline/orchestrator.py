@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from sentinel.audio.framing import Framer
 from sentinel.audio.vad import EnergyVad
@@ -358,9 +358,11 @@ class Orchestrator:
                   "voiced_ratio": round(ratio, 3)})
 
         if gating.should_run_deep(window.t_end_ms, triggers):
-            self._run_deep(window, cm_scores, deep_seqs, stats, emit)
+            self._run_deep(window, cm_scores, deep_seqs, stats, emit,
+                            vad_result=(is_speech, ratio))
 
-    def _run_deep(self, window, cm_scores, deep_seqs, stats, emit) -> None:
+    def _run_deep(self, window, cm_scores, deep_seqs, stats, emit,
+                  vad_result: Optional[Tuple[bool, float]] = None) -> None:
         """
         The countermeasure, on one window. The ONLY place it is ever called.
 
@@ -376,11 +378,19 @@ class Orchestrator:
 
         So: one entry point, one gate. A refused window gets a SILENT score --
         recorded and shown, not omitted -- and stays out of the aggregate.
+
+        `vad_result` lets the forward pass hand in the measurement it already
+        took in `_score_window` for this same window, rather than measuring it
+        twice. The backfill path has no prior measurement, so it leaves this
+        None and the gate below computes it fresh.
         """
         if window.seq in cm_scores:
             return
 
-        is_speech, ratio = self.vad.measure(window.pcm, window.sr)
+        is_speech, ratio = (
+            vad_result if vad_result is not None
+            else self.vad.measure(window.pcm, window.sr)
+        )
         if not is_speech:
             silent = RiskScore(CM, 0.0, window.t_start_ms, window.t_end_ms,
                                self.cm.model_id, SILENT)
