@@ -23,7 +23,7 @@ from typing import Callable, List, Optional
 
 import numpy as np
 
-from sentinel.audio.vad import EnergyVad, rms
+from sentinel.audio.vad import EnergyVad
 from sentinel.config import AudioConfig, ModelConfig
 from sentinel.types import Frame, Utterance
 
@@ -146,7 +146,7 @@ class AsrThread:
                 self.errors += 1
 
     def _consume(self, frame: Frame) -> None:
-        voiced = rms(frame.pcm) >= self.audio_cfg.vad_rms_floor
+        voiced = self.vad.is_speech(frame.pcm, frame.sr)
 
         if voiced:
             if self._buffer_start_ms is None:
