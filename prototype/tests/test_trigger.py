@@ -41,6 +41,9 @@ POSITIVES = (
     "Wire the amount to the new account details before the deadline",
     # Colloquial, but "paperwork" is a keyword, so this is not a hard case.
     "we can do the paperwork afterwards, get it out the door first",
+    # Regression: "director" standalone (not just "managing director" or
+    # "board of directors") must still be a keyword hit on its own.
+    "I am the director, wire it now",
 )
 
 

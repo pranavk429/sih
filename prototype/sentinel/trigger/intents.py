@@ -87,8 +87,8 @@ INTENTS: Tuple[Intent, ...] = (
         # A term that appears in general conversation is not evidence.
         terms=(
             "right now", "immediately", "before the deadline", "no time",
-            "urgent", "urgently", "managing director", "chairman", "cfo",
-            "ceo", "board of directors", "i am instructing", "do it now",
+            "urgent", "urgently", "managing director", "director", "chairman",
+            "cfo", "ceo", "board of directors", "i am instructing", "do it now",
             "cannot wait", "can't wait",
         ),
     ),
