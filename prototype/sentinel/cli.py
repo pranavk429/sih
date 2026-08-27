@@ -340,10 +340,12 @@ def cmd_run(args, cfg: Config) -> int:
     if verdict.segments:
         print(f"\n  suspicious segments ({len(verdict.segments)}):")
         for seg in verdict.segments[:5]:
+            tag = "" if seg.n_inputs >= 2 else "  (single-signal, not a true fusion)"
             print(f"    {seg.t_start_ms / 1000:6.1f}-{seg.t_end_ms / 1000:5.1f}s  "
                   f"fused {seg.fused_risk:.3f}  "
                   f"cm {seg.cm_risk if seg.cm_risk is None else round(seg.cm_risk, 3)}  "
-                  f"spk {seg.speaker_risk if seg.speaker_risk is None else round(seg.speaker_risk, 3)}")
+                  f"spk {seg.speaker_risk if seg.speaker_risk is None else round(seg.speaker_risk, 3)}"
+                  f"{tag}")
     print()
     print(paint(DIM, f"  {stats.windows_total} windows "
                      f"({stats.windows_scored} scored, {stats.windows_silent} silent, "

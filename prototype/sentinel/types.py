@@ -191,6 +191,7 @@ class EvidenceSegment:
     fused_risk: float
     cm_risk: Optional[float]
     speaker_risk: Optional[float]
+    n_inputs: int = 2
 
     def to_json(self) -> Dict[str, Any]:
         return {
@@ -201,6 +202,7 @@ class EvidenceSegment:
             "speaker_risk": (
                 round(float(self.speaker_risk), 4) if self.speaker_risk is not None else None
             ),
+            "n_inputs": self.n_inputs,
         }
 
 

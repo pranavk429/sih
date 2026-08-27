@@ -430,13 +430,16 @@ class Orchestrator:
         return RiskScore(kind, value, window.t_start_ms, window.t_end_ms, model_id, OK)
 
     def _window_fused(self, seq, spk_scores, cm_scores) -> Optional[float]:
+        fused, _ = self._window_fused_full(seq, spk_scores, cm_scores)
+        return fused
+
+    def _window_fused_full(self, seq, spk_scores, cm_scores) -> Tuple[Optional[float], int]:
         spk = spk_scores.get(seq)
         cm = cm_scores.get(seq)
-        fused, _ = self.fusion.fuse(
+        return self.fusion.fuse(
             cm.value if cm is not None and cm.usable else None,
             spk.value if spk is not None and spk.usable else None,
         )
-        return fused
 
     def _decide(self, gating, triggers, spk_scores, cm_scores, window_index,
                 deep_seqs, enrolled, t_ms):
@@ -451,7 +454,7 @@ class Orchestrator:
 
         segments = []
         for seq in seqs:
-            fused = self._window_fused(seq, spk_scores, cm_scores)
+            fused, n_inputs = self._window_fused_full(seq, spk_scores, cm_scores)
             if fused is None or seq not in window_index:
                 continue
             window = window_index[seq]
@@ -464,6 +467,7 @@ class Orchestrator:
                     fused_risk=fused,
                     cm_risk=cm.value if cm is not None and cm.usable else None,
                     speaker_risk=spk.value if spk is not None and spk.usable else None,
+                    n_inputs=n_inputs,
                 )
             )
 

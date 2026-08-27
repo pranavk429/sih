@@ -432,11 +432,14 @@ function renderEvidence() {
         head.appendChild(th);
       }
       table.appendChild(head);
+      let anySingle = false;
       for (const s of segments) {
         const tr = document.createElement('tr');
+        const single = (s.n_inputs || 2) < 2;
+        if (single) anySingle = true;
         const cells = [
           `${(s.t_start_ms / 1000).toFixed(1)}–${(s.t_end_ms / 1000).toFixed(1)}s`,
-          fmt(s.fused_risk),
+          fmt(s.fused_risk) + (single ? ' *' : ''),
           fmt(s.cm_risk),
           fmt(s.speaker_risk),
         ];
@@ -444,11 +447,18 @@ function renderEvidence() {
           const td = document.createElement('td');
           if (i === 1) td.className = 'risk';
           td.textContent = c;
+          if (single) td.title = 'Only one signal was usable on this window — not a genuine two-way match.';
           tr.appendChild(td);
         });
         table.appendChild(tr);
       }
       box.appendChild(table);
+      if (anySingle) {
+        const note = document.createElement('p');
+        note.className = 'placeholder';
+        note.textContent = '* fused from a single signal — the other check had no usable reading on that window.';
+        box.appendChild(note);
+      }
     }
   }
 

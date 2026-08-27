@@ -262,3 +262,22 @@ def test_unknown_fusion_strategy_fails_loudly():
 
     with pytest.raises(ValueError):
         build_fusion("magic")
+
+
+def test_an_evidence_segment_records_how_many_signals_fused_it():
+    """
+    SPEC §12. A "fused" risk computed from ONE usable signal is not the two-way
+    corroboration that the word fused implies, and on a window where the
+    speaker check abstained the fused number is just the countermeasure wearing
+    a different label. The count rides along with the segment so the console
+    and the UI can mark it rather than quietly presenting it as agreement.
+    """
+    from sentinel.types import EvidenceSegment
+
+    both = EvidenceSegment(0, 3000, fused_risk=0.5, cm_risk=0.8,
+                           speaker_risk=0.2, n_inputs=2)
+    single = EvidenceSegment(0, 3000, fused_risk=0.8, cm_risk=0.8,
+                             speaker_risk=None, n_inputs=1)
+
+    assert both.to_json()["n_inputs"] == 2
+    assert single.to_json()["n_inputs"] == 1
