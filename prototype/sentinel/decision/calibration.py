@@ -122,9 +122,10 @@ class Calibration:
             return None
         return (float(value) - float(stats["mean"])) / std
 
-    # config.yaml is hand-written to four decimals, so anything tighter than
-    # this compares the rounding rather than the thresholds.
-    BAND_TOLERANCE = 5e-4
+    # config.yaml is hand-written to four decimals, so half the last digit's
+    # place value (5e-5) is the largest gap that rounding alone can produce.
+    # Anything looser than that starts forgiving real drift, not just rounding.
+    BAND_TOLERANCE = 5e-5
 
     def check_band(self, low_thr: float, high_thr: float) -> Optional[str]:
         """

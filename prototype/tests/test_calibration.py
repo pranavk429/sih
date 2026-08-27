@@ -99,6 +99,20 @@ def test_config_thresholds_match_the_calibration(cal, cfg):
     assert warning is None, warning
 
 
+def test_check_band_tolerance_is_rounding_only(cal):
+    """
+    BAND_TOLERANCE exists to forgive a 4-decimal round-trip through YAML, not
+    to forgive real drift. A gap within it must pass silently; a gap clearly
+    outside it (an order of magnitude bigger) must be reported.
+    """
+    within = cal.band_low + cal.BAND_TOLERANCE * 0.9
+    assert cal.check_band(within, cal.band_high) is None
+
+    drifted = cal.band_low + cal.BAND_TOLERANCE * 10
+    warning = cal.check_band(drifted, cal.band_high)
+    assert warning is not None, "a real threshold drift was not reported"
+
+
 def test_spoof_scores_higher_than_genuine_in_the_calibration(cal):
     """Sanity on the stored statistics: the classes are the right way round."""
     for kind in ("cm", "fused"):
