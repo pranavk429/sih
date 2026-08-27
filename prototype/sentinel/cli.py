@@ -161,7 +161,7 @@ def cmd_scores(args, cfg: Config) -> int:
 
     started = time.monotonic()
     n_scored = n_silent = 0
-    spk_values, cm_values = [], []
+    scored_rows = []  # (spk_risk, cm_risk) per window, None where unavailable
 
     for frame in source.frames():
         for window in framer.push(frame):
@@ -179,19 +179,18 @@ def cmd_scores(args, cfg: Config) -> int:
             if ref is not None:
                 try:
                     spk_risk = spk.risk(ref, spk.embed(window.pcm, window.sr))
-                    spk_values.append(spk_risk)
                 except SilentAudio:
                     pass
 
             cm_risk = None
             if args.cm:
                 cm_risk = cm.risk(window.pcm, window.sr)
-                cm_values.append(cm_risk)
 
+            scored_rows.append((spk_risk, cm_risk))
             n_scored += 1
             spk_txt = f"{spk_risk:.3f}" if spk_risk is not None else "  —  "
             cm_txt = f"{cm_risk:.3f}" if cm_risk is not None else "  —  "
-            hot = (spk_risk or 0) > 0.5 or (cm_risk or 0) > 0.7
+            hot = (spk_risk or 0) > cfg.decision.high_thr or (cm_risk or 0) > cfg.decision.high_thr
             line = f"t={t_s:6.1f}s  spk_risk={spk_txt}  cm_risk={cm_txt}  vad=speech"
             print(paint(RED, line) if hot else line)
 
@@ -199,14 +198,17 @@ def cmd_scores(args, cfg: Config) -> int:
     print(paint(DIM, "-" * 62))
     print(f"{n_scored} windows scored, {n_silent} silent, "
           f"{elapsed:.1f}s wall clock for {source.duration_s:.1f}s of audio")
+    spk_values = [s for s, _ in scored_rows if s is not None]
+    cm_values = [c for _, c in scored_rows if c is not None]
+    fused_pairs = [(s + c) / 2 for s, c in scored_rows if s is not None and c is not None]
     if spk_values:
         print(f"  speaker risk  mean {np.mean(spk_values):.3f}  "
               f"median {np.median(spk_values):.3f}")
     if cm_values:
         print(f"  cm risk       mean {np.mean(cm_values):.3f}  "
               f"median {np.median(cm_values):.3f}")
-    if spk_values and cm_values:
-        fused = (np.array(spk_values[:len(cm_values)]) + np.array(cm_values[:len(spk_values)])) / 2
+    if fused_pairs:
+        fused = np.array(fused_pairs)
         print(f"  fused         mean {fused.mean():.3f}  "
               f"(band [{cfg.decision.low_thr}, {cfg.decision.high_thr}])")
     return 0
