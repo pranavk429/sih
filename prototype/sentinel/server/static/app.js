@@ -112,7 +112,7 @@ function apply(event) {
     case 'risk_score': {
       const point = { t: event.t_end_ms, v: event.value, seq: event.seq };
       if (event.status !== 'OK') {
-        if (event.kind === 'speaker') state.silent.push(point);
+        state.silent.push(point);
       } else if (event.kind === 'cm') {
         state.cm.push(point);
       } else {
