@@ -237,7 +237,16 @@ def _build(cls: type, raw: Dict[str, Any], src: str, prefix: str) -> Any:
 
     kwargs: Dict[str, Any] = {}
     for name, f in known.items():
+        nested = _nested_type(cls, name)
         if name not in raw:
+            # A whole section left out of the override YAML is not "use the
+            # class defaults verbatim" -- it still has to go through _build so
+            # its own path fields get resolved against ROOT. Skipping this
+            # left e.g. models.probe_head_path as the literal relative string
+            # from the dataclass default, valid only when the process's cwd
+            # happened to match.
+            if nested is not None:
+                kwargs[name] = _build(nested, {}, src, f"{prefix}{name}.")
             continue
         value = raw[name]
 
@@ -249,7 +258,6 @@ def _build(cls: type, raw: Dict[str, Any], src: str, prefix: str) -> Any:
             )
             continue
 
-        nested = _nested_type(cls, name)
         if nested is not None:
             if not isinstance(value, dict):
                 raise ValueError(
