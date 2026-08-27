@@ -104,7 +104,7 @@ def main() -> int:
     print(f"TEST : {len(test_speakers)} speakers (speaker-disjointness verified)\n")
 
     print(f"loading task-naive backbone ({cfg.models.cm_backbone_id})...")
-    backbone = registry.probe_backbone(cfg.models.device)
+    backbone = registry.probe_backbone(cfg.models.device, model_id=cfg.models.cm_backbone_id)
 
     print("extracting FIT embeddings...")
     X_fit, y_fit = [], []

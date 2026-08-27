@@ -82,11 +82,20 @@ class LogisticHead:
 class ProbeCountermeasure:
     """CountermeasureModel: raw PCM -> P(synthetic) in [0,1]."""
 
-    def __init__(self, head_path: str, device: str = "auto", backbone: Any = None):
+    def __init__(self, head_path: str, device: str = "auto", backbone: Any = None,
+                 backbone_id: Optional[str] = None):
         self.head = LogisticHead.load(head_path)
-        self.backbone = backbone if backbone is not None else registry.probe_backbone(device)
-        backbone_id = self.head.meta.get("backbone", "unknown-backbone")
-        self.model_id = f"probe-cm:{backbone_id}@{LogisticHead.fingerprint(head_path)}"
+        fit_backbone = self.head.meta.get("backbone")
+        if backbone is None and backbone_id and fit_backbone and backbone_id != fit_backbone:
+            raise ValueError(
+                f"models.cm_backbone_id={backbone_id!r} does not match the backbone "
+                f"{fit_backbone!r} that {head_path} was fit on. Re-run "
+                "scripts/fit_probe.py after changing the backbone, or revert the config."
+            )
+        self.backbone = backbone if backbone is not None else registry.probe_backbone(
+            device, model_id=backbone_id
+        )
+        self.model_id = f"probe-cm:{fit_backbone or 'unknown-backbone'}@{LogisticHead.fingerprint(head_path)}"
 
     def embed(self, pcm: np.ndarray, sr: int) -> np.ndarray:
         return self.backbone.embed(np.asarray(pcm, dtype=np.float32), sr)

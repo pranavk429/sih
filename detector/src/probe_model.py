@@ -35,10 +35,11 @@ TARGET_SR = 16000
 class ProbeBackbone:
     """Frozen, task-naive feature extractor. No classification head at all."""
 
-    def __init__(self, device: str | None = None):
+    def __init__(self, device: str | None = None, model_id: str | None = None):
         self.device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
-        self.extractor = AutoFeatureExtractor.from_pretrained(MODEL_ID)
-        self.model = AutoModel.from_pretrained(MODEL_ID)
+        self.model_id = model_id or MODEL_ID
+        self.extractor = AutoFeatureExtractor.from_pretrained(self.model_id)
+        self.model = AutoModel.from_pretrained(self.model_id)
         self.model.to(self.device)
         self.model.eval()
 

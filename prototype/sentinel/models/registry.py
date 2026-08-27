@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 from sentinel.config import ROOT, Config, prefer_local_model_cache
 
@@ -33,13 +33,13 @@ def _ensure_on_path() -> None:
         sys.path.insert(0, DETECTOR_SRC)
 
 
-def probe_backbone(device: str = "auto") -> Any:
+def probe_backbone(device: str = "auto", model_id: Optional[str] = None) -> Any:
     """detector.probe_model.ProbeBackbone -- frozen, task-naive wav2vec2."""
     _ensure_on_path()
     prefer_local_model_cache()
     from probe_model import ProbeBackbone
 
-    return ProbeBackbone(device=None if device == "auto" else device)
+    return ProbeBackbone(device=None if device == "auto" else device, model_id=model_id)
 
 
 def speaker_fns() -> Tuple[Callable[..., Any], Callable[..., float]]:
@@ -79,6 +79,7 @@ def build_models(cfg: Config) -> Tuple[Any, Any]:
     cm = ProbeCountermeasure(
         head_path=cfg.models.probe_head_path,
         device=cfg.models.device,
+        backbone_id=cfg.models.cm_backbone_id,
     )
     spk = ResemblyzerSpeakerEncoder(min_rms=cfg.audio.min_embed_rms)
     return cm, spk
