@@ -178,7 +178,7 @@ class TriggerEngine:
         # the words a listener actually heard.
         intent_key = match.intent_key
         hit_keys = [k for k, _ in hits]
-        if stage == "lexical" and hit_keys:
+        if stage in ("lexical", "both") and hit_keys:
             intent_key = hit_keys[0]
 
         return TriggerEvent(

@@ -1378,7 +1378,7 @@
  {
   "type": "trigger",
   "t_ms": 26000,
-  "intent": "Instruction not to call back or not to tell anyone",
+  "intent": "Request to bypass an existing verification procedure",
   "stage": "both",
   "margin": 0.2619,
   "scripted": true
