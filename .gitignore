@@ -22,3 +22,6 @@ prototype/artifacts/evidence/*.jsonl
 *.pptx
 *.pdf
 ppt-preview/
+
+# macOS
+.DS_Store
