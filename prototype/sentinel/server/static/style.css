@@ -274,9 +274,23 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 .scroll {
   overflow-y: auto;
+  /* Grow into whatever the panel has spare. Without flex-grow the box stays
+     at its cap while the panel is stretched to the grid row, which leaves a
+     dead band under a line clipped mid-height. */
+  flex: 1 1 auto;
   max-height: 300px;
   min-height: 120px;
   scrollbar-width: thin;
+}
+
+@media (min-width: 1500px) {
+  /* Three-column layout: the row is as tall as the evidence panel, so verdict
+     and transcript are stretched well past 300px. Drop the cap and let the
+     scroller fill its panel -- the box then ends where the panel ends. */
+  .scroll {
+    max-height: none;
+    min-height: 0;
+  }
 }
 .placeholder { color: var(--ink-faint); font-size: 13px; font-style: italic; }
 
