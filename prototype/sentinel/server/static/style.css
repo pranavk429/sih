@@ -1,498 +1,563 @@
 /*
   Sentinel UI.
 
-  Built for a projector in a bright room: high contrast, large numbers, and
-  nothing that depends on colour alone to carry meaning.
+  Built for a projector in a bright room and for a laptop at 2am, so it ships
+  both themes. Light is the default: a dark frame around a light working
+  surface, which is the higher-contrast half of the pair and the one the demo
+  runs in.
+
+  COLOUR DISCIPLINE. Every hue means exactly one thing, and nothing is
+  coloured for decoration:
+      coral    a DECISION      verdict, trigger, flagged evidence
+      lime     a MEASUREMENT   the synthesis-artifact signal, plus the brand
+      lavender a MEASUREMENT   the voice-match signal
+      amber    HONESTY         the abstention band, scripted overlay lines
+      green    a DECISION      verified
 
   One rule here is not aesthetic. SPEC §12 requires UNCERTAIN to be styled as a
   legitimate outcome with the same visual weight as the other two -- not greyed
   out, not an error state. Abstention is the system working correctly, and a UI
   that renders it as a failure argues against the design it is demonstrating.
-  So --verified, --uncertain and --impersonation all get a full-saturation
-  colour, the same border weight, and the same type size. Only MONITORING is
-  dim, because "not deciding yet" genuinely is a lesser state.
+  So all three verdicts share one type size, one weight and one position; only
+  the hue moves. The rail carries a permanent key saying the same thing in
+  words. Only MONITORING is dim, because "not deciding yet" genuinely is a
+  lesser state.
 */
 
-:root {
-  --bg:            #0d1117;
-  --bg-panel:      #151b24;
-  --bg-raised:     #1c242f;
-  --line:          #263041;
-  --line-soft:     #1e2733;
+/* ─────────────────────────────────────────────────────────── fonts ───── */
+/* Self-hosted. No CDN: a font request is a failure mode on a venue network
+   with the WiFi off, and a silent fallback would change every metric below. */
+@font-face{font-family:'Bricolage';src:url('/static/fonts/bricolage.woff2') format('woff2');font-weight:200 800;font-display:swap}
+@font-face{font-family:'Hanken';src:url('/static/fonts/hanken.woff2') format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:'DMMono';src:url('/static/fonts/dmmono.woff2') format('woff2');font-weight:400;font-display:swap}
 
-  --ink:           #e6edf3;
-  --ink-dim:       #8b98a9;
-  --ink-faint:     #5b6673;
+/* ────────────────────────────────────────────────────────── tokens ───── */
+/* Light is defined on bare :root so it also covers the un-stamped default.
+   Dark is defined twice: once behind prefers-color-scheme for viewers who
+   never touch the toggle, once behind [data-theme] so the toggle wins. */
+:root{
+  --desk-a:#e9edd2; --desk-b:#d9dfbe; --desk-c:#ccd3ac;
+  --shell:#17191c;
+  --plate:#ecedee;
+  --card:#ffffff;
+  --card-alt:#17191c;          /* the inverted feature card */
+  --chip:#f3f4f5;
+  --chip-2:#e7e9ea;
 
-  --verified:      #3fb950;
-  --uncertain:     #e3a008;
-  --impersonation: #f85149;
-  --monitoring:    #6e7d91;
+  --t1:#17191c; --t2:#6a6f76; --t3:#9ba1a8;
+  --dt1:#f2f3f2; --dt2:#9aa1a8; --dt3:#6d747c;   /* on the rail / inverted card */
 
-  --spk:           #58a6ff;
-  --cm:            #d2a8ff;
-  --gate:          #f8514922;
-  --scripted:      #e3a008;
+  --rail-hover:rgba(255,255,255,.065);
+  --rail-field:rgba(255,255,255,.03);
+  --rail-line:rgba(255,255,255,.08);
+  --rail-on:#ffffff; --rail-on-t:#17191c;
+  --rail-ct:#2c3037;
 
-  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  --shadow:0 1px 2px rgba(20,22,26,.05), 0 8px 24px -18px rgba(20,22,26,.35);
+
+  --lime:#d8f24d;  --lime-ink:#4d6b00; --lime-wash:#f1f9d0; --lime-line:#dbeaa4;
+  /* fixed inks for the two surfaces that stay light in both themes:
+     the rail's active pill, and the lime honesty card */
+  --on-white-lime:#4d6b00; --on-white-coral:#cf3418;
+  --amber:#f0b429; --amber-ink:#8a5d00; --amber-wash:#fff5dd; --amber-line:#f5e3b8;
+  --amber-body:#7a5c14; --amber-chip:#f6e7c4; --amber-hatch:#f6dfad;
+  --coral:#ff5a40; --coral-ink:#cf3418; --coral-wash:#ffece7; --coral-line:#ffd2c8;
+  --coral-body:#7d3520; --coral-chip:#ffd9d1;
+  --lav:#b6a6f8;   --lav-ink:#4b3d8f;
+  --green:#5fbb6e; --green-ink:#2f7d3f;
+
+  --r-shell:30px; --r-card:22px; --r-in:15px; --r-chip:11px; --r-pill:999px;
+
+  --sans:'Hanken', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --disp:'Bricolage', 'Hanken', -apple-system, sans-serif;
+  --mono:'DMMono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
-* { box-sizing: border-box; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --desk-a:#16180f; --desk-b:#0e100b; --desk-c:#080905;
+    --shell:#1b1e22;
+    --plate:#0f1114;
+    --card:#1a1d21;
+    --card-alt:#0a0c0e;
+    --chip:#23272c;
+    --chip-2:#2c3137;
 
-html, body {
-  margin: 0;
-  height: 100%;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
-}
+    --t1:#eceef0; --t2:#979ea6; --t3:#6f767e;
+    --dt1:#eceef0; --dt2:#979ea6; --dt3:#6f767e;
 
-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
+    --rail-hover:rgba(255,255,255,.055);
+    --rail-field:rgba(255,255,255,.028);
+    --rail-line:rgba(255,255,255,.07);
+    --rail-ct:#2e343b;
 
-/* ---------------------------------------------------------------- header */
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 10px 18px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--line);
-  flex-wrap: wrap;
-}
+    --shadow:0 0 0 1px #262b31;
 
-.brand { display: flex; flex-direction: column; }
-.mark {
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  font-size: 17px;
-}
-.tagline {
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-/* The honesty banner. Not dismissible, not subtle. */
-.banner {
-  padding: 6px 14px;
-  border: 1px solid #3d2f0a;
-  background: #241c05;
-  color: #f0c96b;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-/* SPEC §12: provenance sits next to the risk, always, from before the run. */
-.provenance {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: 2px 18px;
-  margin-left: auto;
-  font-family: var(--mono);
-  font-size: 11px;
-}
-.prov-line { display: flex; gap: 6px; align-items: baseline; }
-.prov-line .k { color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
-.prov-line .v { color: var(--ink-dim); }
-
-.status-chips { display: flex; gap: 6px; align-items: center; }
-.chip {
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 3px;
-  border: 1px solid var(--line);
-  background: var(--bg-raised);
-  color: var(--ink-dim);
-  white-space: nowrap;
-}
-.chip[data-state="on"]   { border-color: #1f6f34; color: var(--verified); }
-.chip[data-state="off"]  { border-color: #6b2020; color: var(--impersonation); }
-.chip[data-state="warn"] { border-color: #7a5a05; color: var(--uncertain); }
-
-/* -------------------------------------------------------------- controls */
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 10px 18px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
-  flex-wrap: wrap;
-}
-.control-group { display: flex; align-items: center; gap: 8px; }
-.control-group.grow { flex: 1 1 0; min-width: 0; }
-/* Kept together so the Stop button never wraps away from Run. */
-.control-group.right { gap: 12px; flex: 0 0 auto; }
-
-.lbl {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--ink-faint);
-}
-
-select, .check {
-  background: var(--bg-raised);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-family: var(--sans);
-  font-size: 13px;
-}
-.check { display: flex; align-items: center; gap: 6px; color: var(--ink-dim); cursor: pointer; }
-
-.segmented { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-.seg {
-  background: var(--bg-raised);
-  color: var(--ink-dim);
-  border: none;
-  padding: 6px 14px;
-  font-family: var(--sans);
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.2;
-}
-.seg small { font-size: 9.5px; color: var(--ink-faint); letter-spacing: 0.04em; }
-.seg + .seg { border-left: 1px solid var(--line); }
-.seg[aria-checked="true"] { background: #22304a; color: var(--ink); }
-.seg[aria-checked="true"] small { color: var(--spk); }
-#mode-always_on[aria-checked="true"] { background: #3a1f1f; }
-#mode-always_on[aria-checked="true"] small { color: var(--impersonation); }
-
-button.run, button.stop {
-  font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 9px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-button.run  { background: var(--spk); color: #06101f; }
-button.stop { background: var(--bg-raised); color: var(--ink-dim); border-color: var(--line); }
-button:disabled { opacity: 0.4; cursor: default; }
-
-/* The false-alarm counter -- the demo feature that wins the argument. */
-.falsealarm {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 14px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--bg-raised);
-}
-.fa-count {
-  font-family: var(--mono);
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--ink-faint);
-  min-width: 1.6ch;
-  text-align: right;
-}
-.fa-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); }
-.fa-label small { text-transform: none; letter-spacing: 0; font-size: 10px; color: var(--ink-faint); }
-.falsealarm[data-state="clean"] { border-color: #1f6f34; }
-.falsealarm[data-state="clean"] .fa-count { color: var(--verified); }
-.falsealarm[data-state="alarming"] { border-color: var(--impersonation); background: #2a1414; }
-.falsealarm[data-state="alarming"] .fa-count { color: var(--impersonation); }
-
-/* ------------------------------------------------------------------ grid */
-.grid {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(340px, 1fr) minmax(340px, 1fr);
-  grid-template-rows: auto auto auto auto;
-  grid-template-areas:
-    "verdict   transcript"
-    "challenge challenge"
-    "timeline  timeline"
-    "evidence  evidence";
-  gap: 12px;
-  padding: 12px 18px 16px;
-}
-@media (min-width: 1500px) {
-  .grid {
-    grid-template-columns: 1.15fr 1fr 1.25fr;
-    grid-template-rows: auto auto 1fr;
-    grid-template-areas:
-      "verdict   transcript evidence"
-      "challenge challenge evidence"
-      "timeline  timeline  timeline";
+    --lime-ink:#cbe95f; --lime-wash:#262f0f; --lime-line:#3a4718;
+    --amber-ink:#f0c05a; --amber-wash:#2a2314; --amber-line:#45391a;
+    --amber-body:#d5b978; --amber-chip:#3d3218; --amber-hatch:#3a2f13;
+    --coral-ink:#ff7d66; --coral-wash:#331914; --coral-line:#4d2419;
+    --coral-body:#e8a291; --coral-chip:#4a2318;
+    --lav-ink:#cfc3ff;
+    --green-ink:#74c983;
   }
 }
 
-.panel {
-  background: var(--bg-panel);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 12px 14px 14px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.panel > h2 {
-  margin: 0 0 10px;
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.11em;
-  color: var(--ink-faint);
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.panel > h2 .sub {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 400;
-  color: var(--ink-faint);
-  font-size: 11px;
+:root[data-theme="dark"]{
+  --desk-a:#16180f; --desk-b:#0e100b; --desk-c:#080905;
+  --shell:#1b1e22;
+  --plate:#0f1114;
+  --card:#1a1d21;
+  --card-alt:#0a0c0e;
+  --chip:#23272c;
+  --chip-2:#2c3137;
+
+  --t1:#eceef0; --t2:#979ea6; --t3:#6f767e;
+  --dt1:#eceef0; --dt2:#979ea6; --dt3:#6f767e;
+
+  --rail-hover:rgba(255,255,255,.055);
+  --rail-field:rgba(255,255,255,.028);
+  --rail-line:rgba(255,255,255,.07);
+  --rail-ct:#2e343b;
+
+  --shadow:0 0 0 1px #262b31;
+
+  --lime-ink:#cbe95f; --lime-wash:#262f0f; --lime-line:#3a4718;
+  --amber-ink:#f0c05a; --amber-wash:#2a2314; --amber-line:#45391a;
+  --amber-body:#d5b978; --amber-chip:#3d3218; --amber-hatch:#3a2f13;
+  --coral-ink:#ff7d66; --coral-wash:#331914; --coral-line:#4d2419;
+  --coral-body:#e8a291; --coral-chip:#4a2318;
+  --lav-ink:#cfc3ff;
+  --green-ink:#74c983;
 }
 
-.verdict   { grid-area: verdict; }
-.transcript{ grid-area: transcript; }
-.challenge { grid-area: challenge; }
-.timeline  { grid-area: timeline; }
-.evidence  { grid-area: evidence; }
+/* ──────────────────────────────────────────────────────────── base ───── */
+*{box-sizing:border-box}
+/* Several things here are toggled with the `hidden` attribute, and almost all
+   of them also carry an explicit `display` in this file -- which silently wins
+   over the UA default and leaves them on screen. This makes `hidden` mean
+   hidden again. */
+[hidden]{display:none !important}
+html,body{margin:0}
+body{
+  background-color:var(--desk-b);
+  background-image:radial-gradient(120% 90% at 12% 0%, var(--desk-a) 0%, var(--desk-b) 55%, var(--desk-c) 100%);
+  font-family:var(--sans); font-size:15px; line-height:1.5; color:var(--t1);
+  -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
+  padding:14px;
+}
+:focus-visible{outline:2px solid var(--lime); outline-offset:2px; border-radius:6px}
 
-.scroll {
-  overflow-y: auto;
-  /* Grow into whatever the panel has spare. Without flex-grow the box stays
-     at its cap while the panel is stretched to the grid row, which leaves a
-     dead band under a line clipped mid-height. */
-  flex: 1 1 auto;
-  max-height: 300px;
-  min-height: 120px;
-  scrollbar-width: thin;
-}
-
-@media (min-width: 1500px) {
-  /* Three-column layout: the row is as tall as the evidence panel, so verdict
-     and transcript are stretched well past 300px. Drop the cap and let the
-     scroller fill its panel -- the box then ends where the panel ends. */
-  .scroll {
-    max-height: none;
-    min-height: 0;
-  }
-}
-.placeholder { color: var(--ink-faint); font-size: 13px; font-style: italic; }
-
-/* --------------------------------------------------------------- verdict */
-.verdict-state {
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.1;
-  padding: 12px 14px;
-  border-radius: 5px;
-  border-left: 6px solid var(--monitoring);
-  background: var(--bg-raised);
-  color: var(--monitoring);
-}
-/* All three outcomes, same weight, same size, same border. */
-#verdict-panel[data-state="VERIFIED"] .verdict-state {
-  color: var(--verified); border-left-color: var(--verified); background: #10231433;
-}
-#verdict-panel[data-state="UNCERTAIN"] .verdict-state {
-  color: var(--uncertain); border-left-color: var(--uncertain); background: #2a210533;
-}
-#verdict-panel[data-state="LIKELY_IMPERSONATION"] .verdict-state {
-  color: var(--impersonation); border-left-color: var(--impersonation); background: #2a121233;
-  font-size: 26px;
+.shell{
+  min-height:calc(100vh - 28px);
+  background:var(--shell); border-radius:var(--r-shell); padding:13px;
+  display:grid; grid-template-columns:250px minmax(0,1fr); gap:13px;
 }
 
-.verdict-numbers { display: flex; gap: 22px; margin: 12px 0 4px; }
-.num { display: flex; flex-direction: column; }
-.num-v { font-family: var(--mono); font-size: 22px; font-weight: 600; }
-.num-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+/* ──────────────────────────────────────────────────────── the rail ───── */
+.rail{display:flex; flex-direction:column; gap:19px; padding:8px 4px 4px 10px; min-width:0}
+.block{min-width:0}
 
-.band-note {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-dim);
-  padding: 6px 0 2px;
-  border-top: 1px solid var(--line-soft);
-  margin-top: 8px;
+.brand{display:flex; align-items:center; gap:9px; padding:2px 6px 0}
+.brand .mk{width:30px;height:30px;border-radius:10px;background:var(--lime);display:grid;place-items:center;color:#17191c;flex:none}
+.brand .nm{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.035em;color:#fff}
+.brand .nm sup{font-family:var(--sans);font-size:8.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--dt3);vertical-align:super;margin-left:5px}
+
+.rail-lbl{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dt3);padding:0 8px;margin-bottom:8px}
+
+/* the pipeline, doubling as navigation: each stage carries its live count */
+.steps{display:flex;flex-direction:column;gap:3px}
+.step{
+  display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-pill);
+  color:var(--dt2);font-size:13.5px;font-weight:500;transition:background .15s,color .15s;
+}
+.step svg{width:18px;height:18px;flex:none;opacity:.8}
+.step .ct{
+  margin-left:auto;font-size:11px;font-weight:700;min-width:22px;height:22px;
+  border-radius:var(--r-pill);display:grid;place-items:center;padding:0 7px;
+  background:var(--rail-ct);color:var(--dt2);
+}
+.step.on{background:var(--rail-on);color:var(--rail-on-t);font-weight:600}
+.step.on svg{opacity:1}
+/* A count is coral when the stage produced a FINDING (a trigger fired, a window
+   was flagged) and lime when it is simply work done. Verifying 47 windows is
+   not a result, and colouring it like one would overstate the evidence. */
+.step.fired .ct{background:var(--lime);color:#17191c}
+#step-trigger.fired .ct,
+#step-evidence.fired .ct{background:var(--coral);color:#fff}
+
+/* call picker */
+.select-wrap{position:relative}
+.select-wrap::after{
+  content:'';position:absolute;right:14px;top:50%;width:8px;height:8px;pointer-events:none;
+  border-right:2px solid var(--dt2);border-bottom:2px solid var(--dt2);
+  transform:translateY(-70%) rotate(45deg);border-radius:1px;
+}
+#demo{
+  -webkit-appearance:none;appearance:none;width:100%;
+  font-family:var(--sans);font-size:12.5px;line-height:1.3;
+  padding:10px 32px 10px 13px;border-radius:var(--r-in);
+  background:var(--rail-field);border:1px solid var(--rail-line);color:var(--dt1);
+  cursor:pointer;
+}
+#demo option{background:var(--shell);color:var(--dt1)}
+
+/* mode — the argument the demo exists to make, so it gets real estate */
+.modes{display:flex;flex-direction:column;gap:5px}
+.mode{
+  display:block;width:100%;text-align:left;cursor:pointer;font-family:var(--sans);
+  padding:9px 13px;border-radius:var(--r-in);border:1px solid var(--rail-line);
+  background:var(--rail-field);color:var(--dt2);transition:.15s;position:relative;
+}
+.mode b{display:block;font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+.mode span{display:block;font-size:11px;color:var(--dt3);margin-top:1px}
+.mode:hover{background:var(--rail-hover)}
+.mode[aria-checked="true"]{background:var(--rail-on);border-color:var(--rail-on);color:var(--rail-on-t)}
+.mode[aria-checked="true"] span{color:var(--on-white-lime)}
+.mode[aria-checked="true"]::after{content:'';position:absolute;right:14px;top:16px;width:8px;height:8px;border-radius:50%;background:var(--lime)}
+/* Naive mode is the wrong answer, and the dot says which one you are in. */
+#mode-always_on[aria-checked="true"] span{color:var(--on-white-coral)}
+#mode-always_on[aria-checked="true"]::after{background:var(--coral)}
+
+.toggle{
+  display:flex;align-items:center;gap:9px;padding:8px 13px;margin-top:5px;
+  border-radius:var(--r-in);background:var(--rail-field);border:1px solid var(--rail-line);
+  color:var(--dt2);font-size:12.5px;cursor:pointer;user-select:none;position:relative;
+}
+/* Transparent but still a real, clickable, focusable checkbox covering the row. */
+.toggle input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.toggle .sw{width:34px;height:19px;border-radius:var(--r-pill);background:var(--rail-ct);position:relative;flex:none;transition:background .18s}
+.toggle .sw::after{content:'';position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;border-radius:50%;background:var(--dt2);transition:.18s}
+.toggle input:checked ~ .sw{background:var(--lime)}
+.toggle input:checked ~ .sw::after{left:17.5px;background:#17191c}
+.toggle:has(input:checked){color:var(--dt1)}
+.toggle input:focus-visible ~ .sw{outline:2px solid var(--lime);outline-offset:2px}
+
+.run-row{display:flex;gap:7px;margin-top:11px}
+.btn{
+  font-family:var(--sans);font-size:14px;font-weight:600;letter-spacing:-.01em;
+  border-radius:var(--r-pill);border:1px solid transparent;cursor:pointer;
+  padding:11px 16px;display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:transform .12s,filter .15s,background .15s;
+}
+.btn:active{transform:scale(.98)}
+.btn svg{width:15px;height:15px}
+.btn-go{flex:1;background:var(--lime);color:#17191c}
+.btn-go:hover{filter:brightness(1.06)}
+.btn-stop{background:var(--rail-hover);color:var(--dt2);border-color:var(--rail-line);padding:11px 15px}
+.btn-stop:hover{color:var(--dt1)}
+.btn:disabled{opacity:.35;cursor:default;transform:none;filter:none}
+
+/* the verdict key: three outcomes, one weight each */
+.vkey{display:flex;flex-direction:column;gap:9px;padding:0 6px}
+.vk{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;font-weight:500;color:var(--dt1);line-height:1.25}
+.vk i{width:9px;height:9px;border-radius:3px;flex:none;margin-top:4px}
+.vk small{display:block;font-size:10.5px;font-weight:400;color:var(--dt3);margin-top:2px}
+
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+
+/* SPEC §12: permanent, undismissable, in the corner the eye returns to */
+.honesty{background:var(--lime);color:#17191c;border-radius:var(--r-card);padding:14px 16px 15px}
+.honesty .h{font-family:var(--disp);font-weight:800;font-size:16px;letter-spacing:-.03em;line-height:1.12;margin-bottom:5px}
+.honesty p{margin:0;font-size:11.6px;line-height:1.4;color:#3f4a00}
+.honesty .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#17191c;margin-right:6px;vertical-align:1px;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+.prov{padding:0 10px 4px;font-family:var(--mono);font-size:10.4px;line-height:1.7;color:var(--dt3)}
+.prov div{display:flex;gap:8px}
+.prov b{font-weight:400;color:var(--dt3);opacity:.72;min-width:72px;flex:none}
+.prov span{color:var(--dt2);word-break:break-all}
+
+/* ─────────────────────────────────────────────────────── the plate ───── */
+.plate{
+  background:var(--plate); border-radius:var(--r-card);
+  padding:16px 20px 18px; min-width:0;
+  display:flex; flex-direction:column; gap:13px;
 }
 
-.reasons { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; }
-.reasons li {
-  padding: 5px 0 5px 14px;
-  border-left: 2px solid var(--line);
-  color: var(--ink-dim);
-  margin-bottom: 2px;
-}
-.reasons li:first-child { color: var(--ink); }
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.who .av{width:40px;height:40px;border-radius:13px;background:var(--card-alt);display:grid;place-items:center;color:var(--lime);flex:none}
+.who .n{font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+.who .s{font-size:11.5px;color:var(--t2)}
+.top .sp{flex:1}
 
-.action {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 4px;
-  font-size: 13.5px;
-  font-weight: 500;
-  background: var(--bg-raised);
-  border-left: 4px solid var(--monitoring);
+.chip{
+  display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px;
+  border-radius:var(--r-pill);background:var(--card);font-size:12.5px;color:var(--t2);
+  font-weight:500;white-space:nowrap;box-shadow:var(--shadow);
 }
-#verdict-panel[data-state="VERIFIED"] .action { border-left-color: var(--verified); }
-#verdict-panel[data-state="UNCERTAIN"] .action { border-left-color: var(--uncertain); }
-#verdict-panel[data-state="LIKELY_IMPERSONATION"] .action { border-left-color: var(--impersonation); }
-.action .action-k {
-  display: block;
-  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--ink-faint); margin-bottom: 3px;
-}
+.chip.mono{font-family:var(--mono);font-size:11.3px}
+.chip::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--t3);flex:none}
+.chip.mono::before{display:none}
+#chip-conn[data-state="on"]::before{background:var(--green)}
+#chip-conn[data-state="off"]::before{background:var(--coral)}
+#chip-lag[data-state="warn"]{background:var(--amber-wash);color:var(--amber-ink)}
 
-/* ------------------------------------------------------------- challenge */
-/* Same colour as .tag.scripted and the transcript's SCRIPTED marker -- this
-   is the same honesty rule (SPEC §12) applied to a second panel: a scripted
-   line must never look like a live, adaptive challenge. */
-.challenge {
-  border-color: #4a3a0c;
-  background: #1c1708;
+.icon-btn{
+  width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;flex:none;
+  background:var(--card);color:var(--t2);display:grid;place-items:center;
+  box-shadow:var(--shadow);transition:color .15s,background .15s;
 }
-.challenge h2 { color: var(--uncertain); }
-.challenge-note {
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: var(--ink-dim);
-  margin-bottom: 9px;
-}
-.challenge-prompt {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--ink);
-  padding: 10px 12px;
-  border-radius: 4px;
-  border-left: 4px solid var(--uncertain);
-  background: var(--bg-raised);
+.icon-btn:hover{color:var(--t1)}
+.icon-btn svg{width:17px;height:17px;grid-area:1/1}
+/* the button shows the theme you would switch TO */
+.icon-btn .ic-sun{display:none}
+.icon-btn .ic-moon{display:block}
+:root[data-theme="dark"] .icon-btn .ic-moon{display:none}
+:root[data-theme="dark"] .icon-btn .ic-sun{display:block}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .icon-btn .ic-moon{display:none}
+  :root:not([data-theme="light"]) .icon-btn .ic-sun{display:block}
 }
 
-/* ------------------------------------------------------------ transcript */
-.line {
-  display: flex;
-  gap: 10px;
-  padding: 5px 8px;
-  border-radius: 3px;
-  font-size: 13.5px;
-  border-left: 3px solid transparent;
+/* Panel 6: the counter that wins the argument. */
+.alerts{
+  display:flex;align-items:center;gap:11px;padding:6px 16px 6px 14px;
+  border-radius:var(--r-pill);background:var(--chip);border:1px solid transparent;
 }
-.line .t { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); min-width: 5.5ch; padding-top: 2px; }
-.line .txt { flex: 1; }
+.alerts .n{font-family:var(--disp);font-weight:800;font-size:28px;letter-spacing:-.04em;color:var(--t3);line-height:1;min-width:1.1ch;text-align:center}
+.alerts .fa-label{font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--t3);line-height:1.3}
+.alerts .fa-label small{display:block;text-transform:none;letter-spacing:0;font-weight:500;font-size:11px;color:var(--t2)}
+.alerts[data-state="clean"]{background:var(--lime-wash);border-color:var(--lime-line)}
+.alerts[data-state="clean"] .n,.alerts[data-state="clean"] .fa-label{color:var(--lime-ink)}
+.alerts[data-state="alarming"]{background:var(--coral-wash);border-color:var(--coral-line)}
+.alerts[data-state="alarming"] .n,.alerts[data-state="alarming"] .fa-label{color:var(--coral-ink)}
+.alerts[data-state="alarming"] .fa-label small{color:var(--coral-body)}
 
+/* ──────────────────────────────────────────────────────── the cards ──── */
+.card{background:var(--card);border-radius:var(--r-card);padding:16px 18px 18px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.card.dark{background:var(--card-alt);color:var(--dt1);box-shadow:none}
+.card.cream{background:var(--amber-wash);box-shadow:none;border:1px solid var(--amber-line)}
+
+.ch{display:flex;align-items:center;gap:10px;margin-bottom:13px;flex:none}
+.ch .ic{width:31px;height:31px;border-radius:11px;background:var(--chip);display:grid;place-items:center;color:var(--t1);flex:none}
+.ch .ic svg{width:17px;height:17px}
+.card.dark .ch .ic{background:rgba(255,255,255,.07);color:var(--dt1)}
+.card.cream .ch .ic{background:var(--amber-chip);color:var(--amber-ink)}
+.ch h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.012em}
+.ch .sub{font-size:11.4px;color:var(--t2);font-weight:400}
+.card.dark .ch .sub{color:var(--dt2)}
+.ch .end{margin-left:auto;display:flex;align-items:center;gap:8px}
+
+.tag{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:3px 8px;border-radius:var(--r-pill);white-space:nowrap;display:inline-block}
+.tag.scripted{background:var(--amber-chip);color:var(--amber-ink)}
+.tag.trig{background:var(--coral);color:#fff}
+.tag.soft{background:var(--chip);color:var(--t2)}
+
+.placeholder{color:var(--t3);font-size:13px;font-style:italic;margin:0}
+
+.scroll{
+  overflow-y:auto;flex:1 1 auto;min-height:0;padding-right:4px;scrollbar-width:thin;
+  /* fade rather than slice a row in half at the boundary */
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 26px),transparent);
+          mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 26px),transparent);
+}
+.scroll::-webkit-scrollbar{width:6px}
+.scroll::-webkit-scrollbar-thumb{background:var(--chip-2);border-radius:99px}
+
+/* ───────────────────────────────── the hero: verdict + risk + reach ──── */
+.hero{flex-direction:row;align-items:stretch;gap:24px;padding:18px 22px 20px;overflow:visible}
+.hero .sep{width:1px;background:var(--chip-2);flex:none}
+.hero .lead{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center}
+
+.eyebrow{
+  display:flex;align-items:center;gap:7px;margin-bottom:8px;
+  font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--t2);
+}
+.eyebrow .b{width:6px;height:6px;border-radius:50%;background:var(--t3);flex:none}
+
+h1{font-family:var(--disp);font-weight:800;margin:0;font-size:clamp(32px,3.3vw,50px);line-height:.96;letter-spacing:-.042em;color:var(--t3);text-wrap:balance}
+
+/* all three outcomes: same size, same weight, same place. only the hue moves */
+#verdict-panel[data-state="VERIFIED"] h1{color:var(--green-ink)}
+#verdict-panel[data-state="UNCERTAIN"] h1{color:var(--amber-ink)}
+#verdict-panel[data-state="LIKELY_IMPERSONATION"] h1{color:var(--coral-ink)}
+#verdict-panel[data-state="VERIFIED"] .eyebrow .b{background:var(--green)}
+#verdict-panel[data-state="UNCERTAIN"] .eyebrow .b{background:var(--amber)}
+#verdict-panel[data-state="LIKELY_IMPERSONATION"] .eyebrow .b{background:var(--coral)}
+
+.action{margin-top:16px;padding:13px 15px;border-radius:var(--r-in);background:var(--card-alt);color:#fff;max-width:62ch}
+.action .action-k{display:block;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--lime);margin-bottom:5px}
+.action div{font-size:13.6px;line-height:1.45;color:#e9ebe8}
+#verdict-panel[data-state="VERIFIED"] .action .action-k{color:var(--green)}
+#verdict-panel[data-state="UNCERTAIN"] .action .action-k{color:var(--amber)}
+#verdict-panel[data-state="LIKELY_IMPERSONATION"] .action .action-k{color:var(--coral)}
+
+.risk{flex:0 0 352px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.reach{flex:0 0 250px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.mini{font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--t3);margin-bottom:9px}
+
+.big{font-family:var(--disp);font-weight:800;letter-spacing:-.045em;line-height:.92}
+.n-xl{font-size:50px}
+.risk-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:var(--r-pill)}
+.badge.hot{background:var(--coral-wash);color:var(--coral-ink)}
+.badge.cool{background:var(--lime-wash);color:var(--lime-ink)}
+.badge.warn{background:var(--amber-wash);color:var(--amber-ink)}
+
+/* the decision rule, drawn. the risk number is never shown naked (SPEC §12) */
+.band{margin-top:16px}
+.band .track{position:relative;height:14px;border-radius:var(--r-pill);overflow:hidden;display:flex;background:var(--chip)}
+.band .zone{height:100%}
+.band .z-ok{background:var(--lime-wash)}
+.band .z-ab{background:repeating-linear-gradient(45deg,var(--amber-wash) 0 5px,var(--amber-hatch) 5px 10px)}
+.band .z-no{background:var(--coral-wash)}
+.band .mark{position:absolute;top:-6px;width:4px;height:26px;border-radius:var(--r-pill);background:var(--t1);transform:translateX(-50%);box-shadow:0 0 0 3px var(--card)}
+.band .keys{display:flex;margin-top:10px;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.band .keys i{font-style:normal;white-space:nowrap;overflow:visible}
+.band .keys .k1{color:var(--green-ink)}
+.band .keys .k2{color:var(--amber-ink);text-align:center}
+.band .keys .k3{color:var(--coral-ink);text-align:right}
+.calline{margin-top:12px;padding-top:10px;border-top:1px solid var(--chip-2);font-family:var(--mono);font-size:10.5px;color:var(--t2);line-height:1.6}
+
+/* coverage: three circles, sized by how many windows each stage kept */
+.bubbles{position:relative;height:128px}
+.bub{position:absolute;border-radius:50%;display:grid;place-items:center;text-align:center;line-height:1;transition:width .35s,height .35s,left .35s,top .35s}
+.bub b{font-family:var(--disp);font-weight:800;letter-spacing:-.04em;display:block}
+.bub s{display:block;text-decoration:none;font-size:9px;font-weight:700;letter-spacing:.07em;margin-top:3px;opacity:.7}
+.b1{background:var(--lav);color:#241a4d}
+.b2{background:var(--card-alt);color:#fff}
+.b3{background:var(--coral);color:#fff}
+/* A small circle cannot carry its own label, so the three are named once here
+   and the circles stay pure quantity. */
+.bub-key{display:flex;gap:13px;margin-top:2px;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
+.bub-key span{display:inline-flex;align-items:center;gap:5px}
+.bub-key i{width:8px;height:8px;border-radius:50%;flex:none}
+.k-scored{background:var(--lav)}
+.k-deep{background:var(--card-alt)}
+.k-flagged{background:var(--coral)}
+.cov-note{font-size:11.4px;color:var(--t2);margin-top:7px;line-height:1.4}
+
+/* ───────────────────────────────── row: why / transcript / evidence ──── */
+.main{
+  display:grid;grid-template-columns:1.02fr 1.06fr 1.12fr;gap:13px;
+  align-items:stretch;height:clamp(400px,44vh,520px);
+}
+
+.reasons{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.reasons li{font-size:12.9px;line-height:1.47;color:var(--t2);padding:10px 12px;border-radius:var(--r-in);background:var(--chip)}
+/* the first reason is the one that started the whole chain */
+.reasons li:first-child{background:var(--coral-wash);color:var(--coral-body)}
+#verdict-panel[data-state="VERIFIED"] ~ .main .reasons li:first-child{background:var(--lime-wash);color:var(--lime-ink)}
+#verdict-panel[data-state="UNCERTAIN"] ~ .main .reasons li:first-child{background:var(--amber-wash);color:var(--amber-body)}
+
+/* transcript */
+.note{
+  display:flex;gap:10px;padding:10px 12px;border-radius:var(--r-in);flex:none;
+  background:var(--amber-wash);border:1px solid var(--amber-line);
+  font-size:11.6px;line-height:1.45;color:var(--amber-body);margin-bottom:11px;
+}
+.note::before{
+  content:'';width:15px;height:15px;flex:none;margin-top:1px;background:currentColor;
+  -webkit-mask:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M12 11.2v5M12 8.1h.01'/%3E%3C/svg%3E");
+          mask:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M12 11.2v5M12 8.1h.01'/%3E%3C/svg%3E");
+}
+
+.line{display:flex;gap:10px;padding:6px 4px;border-radius:var(--r-in)}
+.line .t{font-family:var(--mono);font-size:10.3px;color:var(--t3);flex:none;background:var(--chip);border-radius:var(--r-pill);padding:2px 8px;height:20px;margin-top:1px}
+.line .txt{font-size:13.4px;line-height:1.45;min-width:0}
+.line .txt .tag{margin:0 6px 5px 0}
 /* SPEC §12 / IMPLEMENTATION-PLAN 2.6: an unlabelled scripted line would make
    the whole demo dishonest. This marker is not optional. */
-.line.scripted { border-left-color: var(--scripted); background: #241c0522; }
-.tag {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.09em;
-  padding: 1px 5px;
-  border-radius: 2px;
-  vertical-align: 1px;
-  margin-right: 6px;
-  border: 1px solid currentColor;
+.line.scripted{background:var(--amber-wash);padding:8px 11px;margin:3px 0}
+.line.scripted .t{background:var(--amber-chip);color:var(--amber-ink)}
+.line.triggered{background:var(--coral-wash);padding:8px 11px;margin:3px 0}
+.line.triggered .t{background:var(--coral-chip);color:var(--coral-ink)}
+.trigger-detail{
+  margin:7px 0 8px;padding:10px 12px;border-radius:var(--r-in);
+  background:var(--card-alt);color:#fff;font-size:12.3px;font-weight:600;
 }
-.tag.scripted { color: var(--scripted); }
-.tag.trig     { color: var(--impersonation); }
+/* The two-stage structure IS the answer to "isn't this just keyword
+   matching?", so the stage and the margin are on screen, not in a log. */
+.trigger-detail .meta{display:block;margin-top:4px;font-family:var(--mono);font-size:10.3px;font-weight:400;color:var(--dt2);line-height:1.5}
 
-.line.triggered { background: #2a121244; border-left-color: var(--impersonation); }
-.trigger-detail {
-  margin: 2px 0 8px 26px;
-  padding: 7px 10px;
-  border-left: 3px solid var(--impersonation);
-  background: #1a0f0f;
-  font-size: 12px;
-  color: #f3b0ab;
-  border-radius: 0 3px 3px 0;
+/* evidence */
+table.segments{width:100%;border-collapse:separate;border-spacing:0;font-size:12.4px}
+table.segments th{
+  text-align:right;font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--t3);padding:0 10px 8px;position:sticky;top:0;background:var(--card);z-index:2;
 }
-.trigger-detail .meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim); display: block; margin-top: 3px; }
+table.segments th:first-child,table.segments td:first-child{text-align:left}
+table.segments td{padding:6.5px 10px;text-align:right;color:var(--t2)}
+table.segments tr:hover td{background:var(--chip)}
+table.segments td:first-child{border-radius:var(--r-chip) 0 0 var(--r-chip);font-family:var(--mono);font-size:11.3px;color:var(--t1)}
+table.segments td:last-child{border-radius:0 var(--r-chip) var(--r-chip) 0}
+/* the fused column carries its own magnitude, so thirty rows read as a shape */
+table.segments td.risk{position:relative;font-weight:700;color:var(--coral-ink);font-size:12.8px}
+table.segments td.risk i{position:absolute;right:5px;top:4px;bottom:4px;max-width:76px;border-radius:6px;background:var(--coral-wash)}
+table.segments td.risk span{position:relative}
 
-.overlay-note {
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: #d9ae4a;
-  background: #241c0533;
-  border: 1px dashed #4a3a0c;
-  border-radius: 3px;
-  padding: 7px 9px;
-  margin-bottom: 9px;
-  flex: 0 0 auto;
+/* Model and calibration ids: what make the verdict attributable when
+   calibration.json is later replaced. */
+.ids{margin-top:12px;padding:11px 13px;border-radius:var(--r-in);background:var(--chip);font-family:var(--mono);font-size:10.4px;line-height:1.8;color:var(--t2);flex:none}
+.ids .row{display:flex;gap:10px}
+.ids .row b{font-weight:400;color:var(--t3);min-width:80px;flex:none}
+.ids .row span{word-break:break-all}
+
+/* ────────────────────────────── challenge, beside the argument it fits ── */
+.bottom{display:grid;grid-template-columns:330px minmax(0,1fr);gap:13px;align-items:stretch;height:clamp(290px,31vh,350px)}
+.bottom[data-challenge="off"]{grid-template-columns:minmax(0,1fr)}
+
+/* Same amber as the transcript's SCRIPTED marker -- the same honesty rule
+   (SPEC §12) applied to a second panel: a scripted line must never look like
+   a live, adaptive challenge. */
+.chal{padding:15px 17px 16px;min-height:0}
+.chal .side{margin-bottom:11px;flex:none}
+.chal .ch{margin-bottom:9px}
+.chal-note{font-size:11.4px;line-height:1.45;color:var(--amber-body);margin:0}
+.chal-prompt{
+  background:var(--card);border-radius:var(--r-in);padding:12px 14px;
+  font-size:12.6px;line-height:1.5;color:var(--t1);
+  overflow-y:auto;min-height:0;scrollbar-width:thin;
 }
 
-/* -------------------------------------------------------------- timeline */
-.timeline canvas { width: 100%; height: 210px; display: block; }
-.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; text-transform: none; letter-spacing: 0; }
-.key { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--ink-dim); }
-.key::before { content: ""; width: 13px; height: 3px; border-radius: 2px; background: currentColor; }
-.key-spk  { color: var(--spk); }
-.key-cm   { color: var(--cm); }
-.key-gate { color: #f85149; }
-.key-gate::before { height: 11px; opacity: 0.28; }
-.key-band { color: var(--uncertain); }
-.key-band::before { height: 11px; opacity: 0.28; }
-.timeline-note { font-size: 11.5px; color: var(--ink-faint); margin-top: 6px; }
+/* ────────────────────────────────────────── the dark chart card ──────── */
+.tl-head{display:flex;align-items:flex-start;gap:30px;flex-wrap:wrap;margin-bottom:2px;flex:none}
+.tl-stat{display:flex;gap:11px;align-items:flex-start}
+.tl-stat .bar{width:7px;height:36px;border-radius:var(--r-pill);flex:none;margin-top:2px}
+.tl-stat .v{font-family:var(--disp);font-weight:800;font-size:32px;letter-spacing:-.045em;line-height:1;color:#fff}
+.tl-stat .v em{font-style:normal;font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--dt2);margin-left:7px;letter-spacing:0}
+.tl-stat .l{font-size:11.3px;color:var(--dt2);margin-top:5px}
+.legend{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.lg{display:inline-flex;align-items:center;gap:7px;font-size:10.8px;color:var(--dt2);background:rgba(255,255,255,.06);border-radius:var(--r-pill);padding:6px 12px}
+.lg .sw{width:11px;height:3px;border-radius:2px}
+.lg .sq{width:10px;height:10px;border-radius:3px}
+.lg .sq-gate{background:#3a3f46}
+.lg .sq-band{background:#5a4a1e}
+#canvas{width:100%;flex:1 1 auto;min-height:130px;display:block;margin-top:4px}
+.tl-note{font-size:11.8px;color:var(--dt2);margin-top:8px;flex:none}
+.tl-note b{color:var(--lime);font-weight:600}
 
-/* -------------------------------------------------------------- evidence */
-table.segments { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
-table.segments th {
-  text-align: right;
-  font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-faint);
-  font-weight: 500;
-  padding: 0 8px 5px;
-  border-bottom: 1px solid var(--line);
-  position: sticky;
-  top: 0;
-  background: var(--bg-panel);
-}
-table.segments th:first-child, table.segments td:first-child { text-align: left; }
-table.segments td { padding: 4px 8px; border-bottom: 1px solid var(--line-soft); text-align: right; color: var(--ink-dim); }
-table.segments td.risk { color: var(--impersonation); font-weight: 600; }
-table.segments tr:hover td { background: var(--bg-raised); }
+/* ──────────────────────────────────────────────────────── the footer ─── */
+.foot{display:flex;gap:20px;padding:1px 4px 0;font-family:var(--mono);font-size:10.2px;line-height:1.6;color:var(--t3)}
+.foot .a{flex:0 0 300px}
+.foot .b{flex:1}
 
-.ids {
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px solid var(--line-soft);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  display: grid;
-  gap: 2px;
+/* ─────────────────────────────────────────────────────── responsive ──── */
+/* Below ~1500px the fixed-height panel row stops being honest about what it
+   can hold, so the page switches to "tall document" mode: panels size to
+   their content, capped, and the page itself scrolls. */
+@media (max-width:1500px){
+  .main{grid-template-columns:1fr 1fr;height:auto}
+  .main > .card{max-height:540px}
+  .ev{grid-column:1/-1;max-height:480px}
+  .bottom{grid-template-columns:1fr;height:auto}
+  .bottom .card.dark{min-height:330px}
+  .hero{flex-wrap:wrap;gap:18px 24px}
+  .hero .sep{display:none}
+  .hero .lead{flex:1 1 100%}
+  .hero .risk{flex:1 1 320px;border-top:1px solid var(--chip-2);padding-top:14px}
+  .hero .reach{flex:1 1 260px;border-top:1px solid var(--chip-2);padding-top:14px}
 }
-.ids .row { display: flex; gap: 8px; }
-.ids .row b { font-weight: 500; color: var(--ink-faint); min-width: 11ch; }
-.ids .row span { color: var(--ink-dim); word-break: break-all; }
+@media (max-width:1020px){
+  .shell{grid-template-columns:1fr}
+  .main{grid-template-columns:1fr}
+  .ev{grid-column:auto}
+  .foot{flex-wrap:wrap}
+  .foot .a{flex:1 1 100%}
+}
 
-/* ---------------------------------------------------------------- footer */
-.footer {
-  display: flex;
-  gap: 14px;
-  padding: 7px 18px;
-  border-top: 1px solid var(--line);
-  background: var(--bg-panel);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--ink-faint);
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
 }
-.footer .spacer { flex: 1; }

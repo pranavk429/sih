@@ -3,14 +3,17 @@
   Sentinel — the demo screen.
 
   No CDN, no build step, no framework. One HTML file, one CSS file, one JS
-  file, all served from disk. SPEC §3: "a build step is a failure mode on
-  stage", and a CDN is a failure mode on a venue network with the WiFi off.
+  file, and three self-hosted font files, all served from disk. SPEC §3: "a
+  build step is a failure mode on stage", and a CDN is a failure mode on a
+  venue network with the WiFi off.
 
   The honesty rules in SPEC §12 are structural here, not styling:
-    - the "Simulated live call" banner is in the header and cannot be dismissed
+    - the "Simulated live call" banner is pinned in the rail and cannot be
+      dismissed or scrolled away
     - the calibration provenance sits next to the risk number, always
     - scripted overlay lines carry a visible marker in the transcript
-    - UNCERTAIN has the same visual weight as the other two verdicts
+    - UNCERTAIN has the same type size and weight as the other two verdicts,
+      and the rail carries a permanent key saying abstention is an outcome
     - pipeline lag is shown when we fall behind real time
 -->
 <html lang="en">
@@ -20,149 +23,283 @@
 <title>Sentinel — voice-cloning defence</title>
 <link rel="stylesheet" href="/static/style.css">
 <link rel="icon" href="data:,">
+<script>
+  // Applied before first paint so the page never flashes the wrong theme.
+  try {
+    var t = localStorage.getItem('sentinel-theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+</script>
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">
-    <span class="mark">SENTINEL</span>
-    <span class="tagline">trigger &rarr; verify &rarr; challenge &rarr; evidence</span>
-  </div>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h2.2l2.3-6.5 3.2 13L14 8l2 4h5"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5.5 14H11l-1 7 8.5-11H13l1-7Z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5.6c0 4 2.9 7.3 7 8.9 4.1-1.6 7-4.9 7-8.9V6l-7-3Z"/><path d="m9.2 12 2 2 3.6-3.8"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.6" cy="8.4" r="4.4"/><path d="m12.5 11.5-8 8V21h2.6v-2.1h2.1v-2.1h2.1"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 7h15M4.5 12h15M4.5 17h9"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17.5a8.5 8.5 0 1 1 16 0"/><path d="M12 17.5 15.8 12"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.5 8.5 4.7-8.5 4.7-8.5-4.7L12 3.5Z"/><path d="m3.5 14.2 8.5 4.7 8.5-4.7"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.2A7.2 7.2 0 0 1 12.8 19.4H8.4L4 22v-4.9a7.2 7.2 0 0 1 4.4-13h4.4A7.2 7.2 0 0 1 20 10.4v1.8Z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11.2v5M12 8.1h.01"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6a1 1 0 0 1 1.5-.87l9 6.4a1 1 0 0 1 0 1.74l-9 6.4A1 1 0 0 1 8 18.4V5.6Z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20v-1.2A4.8 4.8 0 0 1 10.8 14h2.4A4.8 4.8 0 0 1 18 18.8V20"/><circle cx="12" cy="8" r="3.6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 3.2v1.9M12 18.9v1.9M3.2 12h1.9M18.9 12h1.9M5.8 5.8l1.4 1.4M16.8 16.8l1.4 1.4M18.2 5.8l-1.4 1.4M7.2 16.8l-1.4 1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13.6A8.2 8.2 0 0 1 10.4 4a8.2 8.2 0 1 0 9.6 9.6Z"/></symbol>
+</svg>
 
-  <!-- SPEC §12: never call this a live phone call. -->
-  <div class="banner" id="banner">Simulated live call — recorded audio streamed in real time.</div>
+<div class="shell">
 
-  <div class="provenance" id="provenance">
-    <div class="prov-line"><span class="k">calibration</span> <span class="v" id="prov-id">—</span></div>
-    <div class="prov-line"><span class="k">dataset</span> <span class="v" id="prov-dataset">—</span></div>
-    <div class="prov-line"><span class="k">EER</span> <span class="v" id="prov-eer">—</span></div>
-  </div>
+  <!-- ═══════════════════════════════════════════════════ the rail ═════ -->
+  <aside class="rail">
 
-  <div class="status-chips">
-    <span class="chip" id="chip-conn" data-state="off">disconnected</span>
-    <span class="chip" id="chip-lag" hidden>lag —</span>
-    <span class="chip" id="chip-clock">—</span>
-  </div>
-</header>
+    <div class="brand">
+      <span class="mk"><svg width="17" height="17"><use href="#i-wave"/></svg></span>
+      <span class="nm">sentinel<sup>demo</sup></span>
+    </div>
 
-<section class="controls">
-  <div class="control-group">
-    <label class="lbl" for="demo">call</label>
-    <select id="demo"></select>
-  </div>
+    <!-- The pipeline is the navigation: each stage carries its live count. -->
+    <div class="block">
+      <div class="rail-lbl">pipeline</div>
+      <div class="steps">
+        <div class="step" id="step-trigger"><svg><use href="#i-bolt"/></svg> Trigger <span class="ct" id="ct-trigger">0</span></div>
+        <div class="step" id="step-verify"><svg><use href="#i-shield"/></svg> Verify <span class="ct" id="ct-verify">0</span></div>
+        <div class="step" id="step-challenge"><svg><use href="#i-key"/></svg> Challenge <span class="ct" id="ct-challenge">0</span></div>
+        <div class="step" id="step-evidence"><svg><use href="#i-list"/></svg> Evidence <span class="ct" id="ct-evidence">0</span></div>
+      </div>
+    </div>
 
-  <!-- Panel 6: the mode toggle. This is the argument the demo exists to make. -->
-  <div class="control-group modes" role="radiogroup" aria-label="Detection mode">
-    <label class="lbl">mode</label>
-    <div class="segmented">
-      <button class="seg" id="mode-triggered" data-mode="triggered" role="radio" aria-checked="true">
-        Sentinel <small>triggered</small>
+    <div class="block">
+      <div class="rail-lbl">call</div>
+      <div class="select-wrap"><select id="demo"></select></div>
+
+      <!-- The mode toggle. This is the argument the demo exists to make. -->
+      <div class="rail-lbl" style="margin-top:14px">detection mode</div>
+      <div class="modes" role="radiogroup" aria-label="Detection mode">
+        <button class="mode" id="mode-triggered" data-mode="triggered" role="radio" aria-checked="true">
+          <b>Sentinel</b><span>verify only when triggered</span>
+        </button>
+        <button class="mode" id="mode-always_on" data-mode="always_on" role="radio" aria-checked="false">
+          <b>Naive</b><span>score every call</span>
+        </button>
+      </div>
+
+      <label class="toggle" for="fast">
+        <input type="checkbox" id="fast"><span class="sw"></span> Fast replay (rehearsal)
+      </label>
+
+      <div class="run-row">
+        <button class="btn btn-go" id="run"><svg><use href="#i-play"/></svg> <span id="run-label">Run call</span></button>
+        <button class="btn btn-stop" id="stop" disabled aria-label="Stop"><svg><use href="#i-stop"/></svg></button>
+      </div>
+    </div>
+
+    <!-- SPEC §12: abstaining is an outcome, not a failure. Say so permanently. -->
+    <div class="block">
+      <div class="rail-lbl">verdict scale</div>
+      <div class="vkey">
+        <span class="vk"><i style="background:var(--green)"></i><span>Verified<small>below the band</small></span></span>
+        <span class="vk"><i style="background:var(--amber)"></i><span>Uncertain<small>inside the band — we decline to guess</small></span></span>
+        <span class="vk"><i style="background:var(--coral)"></i><span>Likely impersonation<small>above the band</small></span></span>
+      </div>
+    </div>
+
+    <div class="rail-foot">
+      <!-- Not dismissible, not subtle, and never scrolled off the screen. -->
+      <div class="honesty">
+        <div class="h"><span class="dot"></span>Simulated live call</div>
+        <p>Recorded audio streamed in real time. This is not a live phone line, and nothing here dials out.</p>
+      </div>
+      <div class="prov">
+        <div><b>dataset</b><span id="prov-dataset">—</span></div>
+        <div><b>eer</b><span id="prov-eer">—</span></div>
+        <div><b>calibration</b><span id="prov-id">—</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════ the plate ═════ -->
+  <main class="plate">
+
+    <div class="top">
+      <div class="who">
+        <span class="av"><svg width="19" height="19"><use href="#i-user"/></svg></span>
+        <div>
+          <div class="n" id="who-name">No call loaded</div>
+          <div class="s" id="who-sub">pick a call in the rail, then run it</div>
+        </div>
+      </div>
+      <div class="sp"></div>
+
+      <span class="chip" id="chip-conn" data-state="off">disconnected</span>
+      <span class="chip mono" id="chip-lag" hidden>lag —</span>
+      <span class="chip mono" id="chip-clock">—</span>
+
+      <button class="icon-btn" id="theme" aria-label="Switch between light and dark">
+        <svg class="ic-sun"><use href="#i-sun"/></svg>
+        <svg class="ic-moon"><use href="#i-moon"/></svg>
       </button>
-      <button class="seg" id="mode-always_on" data-mode="always_on" role="radio" aria-checked="false">
-        Naive <small>score every call</small>
-      </button>
-    </div>
-  </div>
 
-  <div class="control-group">
-    <label class="lbl" for="fast">replay</label>
-    <label class="check"><input type="checkbox" id="fast"> fast (rehearsal)</label>
-  </div>
-
-  <div class="control-group grow"></div>
-
-  <div class="control-group right">
-    <div class="falsealarm" id="falsealarm" data-state="idle">
-      <div class="fa-count" id="fa-count">0</div>
-      <div class="fa-label">false alarms<br><small id="fa-note">on a call we know is genuine</small></div>
-    </div>
-    <button class="run" id="run">Run call</button>
-    <button class="stop" id="stop" disabled>Stop</button>
-  </div>
-</section>
-
-<main class="grid">
-
-  <!-- Panel 4: the verdict. -->
-  <section class="panel verdict" id="verdict-panel" data-state="IDLE">
-    <h2>Verdict</h2>
-    <div class="verdict-state" id="verdict-state">READY</div>
-    <div class="verdict-numbers">
-      <div class="num">
-        <span class="num-v" id="verdict-risk">—</span>
-        <span class="num-k">fused risk</span>
-      </div>
-      <div class="num">
-        <span class="num-v" id="verdict-conf">—</span>
-        <span class="num-k">confidence</span>
-      </div>
-      <div class="num">
-        <span class="num-v" id="verdict-windows">—</span>
-        <span class="num-k">windows</span>
+      <!-- Panel 6: the counter that wins the argument. -->
+      <div class="alerts" id="falsealarm" data-state="idle">
+        <span class="n" id="fa-count">0</span>
+        <span class="fa-label">false alarms<br><small id="fa-note">pick a call</small></span>
       </div>
     </div>
-    <!-- SPEC §12: the risk number is never presented naked. -->
-    <div class="band-note" id="band-note">abstention band —</div>
-    <ul class="reasons" id="reasons"></ul>
-    <div class="action" id="action" hidden></div>
-  </section>
 
-  <!-- Panel: the challenge. Only shown when the verdict is UNCERTAIN. -->
-  <section class="panel challenge" id="challenge-panel" hidden>
-    <h2>Challenge <span class="tag scripted">SCRIPTED</span></h2>
-    <div class="challenge-note">
-      A scripted line for the operator to read to the caller before hanging
-      up to verify independently — not an automated or interactive
-      challenge, and not itself proof of anything the caller says back.
+    <!-- ── the verdict, the number behind it, and how much we looked ──── -->
+    <section class="card hero" id="verdict-panel" data-state="IDLE">
+      <div class="lead">
+        <div class="eyebrow"><span class="b"></span>
+          verdict · <span id="verdict-windows">—</span> windows ·
+          <span id="verdict-segments">—</span> flagged segments
+        </div>
+        <h1 id="verdict-state">READY</h1>
+        <div class="action" id="action" hidden></div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="risk">
+        <div class="mini">fused risk</div>
+        <div class="risk-line">
+          <span class="big n-xl" id="verdict-risk">—</span>
+          <span class="badge" id="risk-badge" hidden></span>
+        </div>
+        <!-- SPEC §12: the risk number is never presented naked. The band it is
+             read against is drawn, not just described. -->
+        <div class="band">
+          <div class="track">
+            <span class="zone z-ok" id="band-ok"></span>
+            <span class="zone z-ab" id="band-ab"></span>
+            <span class="zone z-no" id="band-no"></span>
+            <span class="mark" id="band-mark" hidden></span>
+          </div>
+          <div class="keys">
+            <i class="k1" id="key-ok">verified</i>
+            <i class="k2" id="key-ab">abstain</i>
+            <i class="k3" id="key-no">impersonation</i>
+          </div>
+        </div>
+        <div class="calline">
+          <div id="band-note">abstention band —</div>
+          <div id="cal-note" hidden></div>
+          <div>confidence <span id="verdict-conf">—</span> · margin past the boundary</div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="reach">
+        <div class="mini">how much we looked</div>
+        <div class="bubbles" id="bubbles">
+          <span class="bub b1" id="bub-scored"><span><b>—</b><s>SCORED</s></span></span>
+          <span class="bub b2" id="bub-deep"><span><b>—</b><s>DEEP</s></span></span>
+          <span class="bub b3" id="bub-flagged"><span><b>—</b><s>FLAGGED</s></span></span>
+        </div>
+        <div class="bub-key">
+          <span><i class="k-scored"></i>scored</span>
+          <span><i class="k-deep"></i>deep</span>
+          <span><i class="k-flagged"></i>flagged</span>
+        </div>
+        <div class="cov-note" id="cov-note">Nothing scored yet.</div>
+      </div>
+    </section>
+
+    <!-- ── why / transcript / evidence ───────────────────────────────── -->
+    <section class="main">
+
+      <div class="card">
+        <div class="ch">
+          <span class="ic"><svg><use href="#i-shield"/></svg></span>
+          <div><h2>Why</h2><div class="sub">in the order it happened</div></div>
+        </div>
+        <div class="scroll"><ul class="reasons" id="reasons"></ul></div>
+      </div>
+
+      <div class="card">
+        <div class="ch">
+          <span class="ic"><svg><use href="#i-chat"/></svg></span>
+          <div><h2>Transcript</h2><div class="sub" id="transcript-sub"></div></div>
+        </div>
+        <!-- Pinned, NOT inside the scroller. The disclosure that some of these
+             lines are injected has to be readable at every moment of the run,
+             and a transcript that auto-scrolls would carry it off the top. -->
+        <div class="note" id="overlay-note" hidden></div>
+        <div class="scroll" id="transcript">
+          <p class="placeholder">Waiting for the call to start.</p>
+        </div>
+      </div>
+
+      <div class="card ev">
+        <div class="ch">
+          <span class="ic"><svg><use href="#i-list"/></svg></span>
+          <div><h2>Evidence</h2><div class="sub" id="evidence-sub"></div></div>
+        </div>
+        <div class="scroll" id="evidence">
+          <p class="placeholder">No suspicious segments.</p>
+        </div>
+        <div class="ids" id="ids"></div>
+      </div>
+
+    </section>
+
+    <!-- ── the challenge, next to the argument it belongs to ──────────── -->
+    <section class="bottom" id="bottom" data-challenge="off">
+
+      <div class="card cream chal" id="challenge-panel" hidden>
+        <div class="side">
+          <div class="ch">
+            <span class="ic"><svg><use href="#i-key"/></svg></span>
+            <div><h2>Challenge</h2><div class="sub">read aloud, then hang up</div></div>
+            <div class="end"><span class="tag scripted">scripted</span></div>
+          </div>
+          <p class="chal-note">A scripted line for the operator — not an automated or interactive
+            challenge, and not itself proof of anything the caller says back.</p>
+        </div>
+        <div class="chal-prompt" id="challenge-prompt"></div>
+      </div>
+
+      <div class="card dark">
+        <div class="tl-head">
+          <div class="tl-stat">
+            <span class="bar" style="background:var(--lime)"></span>
+            <div>
+              <div class="v"><span id="tl-cm">—</span><em id="tl-cm-peak"></em></div>
+              <div class="l">synthesis artifacts</div>
+            </div>
+          </div>
+          <div class="tl-stat">
+            <span class="bar" style="background:var(--lav)"></span>
+            <div>
+              <div class="v"><span id="tl-spk">—</span><em id="tl-spk-floor"></em></div>
+              <div class="l">voice match</div>
+            </div>
+          </div>
+          <div class="legend">
+            <span class="lg"><span class="sw" style="background:var(--lav)"></span> voice match</span>
+            <span class="lg"><span class="sw" style="background:var(--lime)"></span> synthesis artifacts</span>
+            <span class="lg"><span class="sq sq-gate"></span> deep verification active</span>
+            <span class="lg"><span class="sq sq-band"></span> abstention band</span>
+            <span class="lg"><span class="sq" style="background:var(--coral)"></span> trigger</span>
+          </div>
+        </div>
+        <canvas id="canvas"></canvas>
+        <div class="tl-note" id="timeline-note">The voice check runs on <b>every window</b>. The artifact
+          check runs <b>only inside the shaded region</b> — that is the whole idea.</div>
+      </div>
+
+    </section>
+
+    <div class="foot">
+      <span class="a" id="footer-stats">—</span>
+      <span class="b" id="footer-provenance"></span>
     </div>
-    <div class="challenge-prompt" id="challenge-prompt"></div>
-  </section>
 
-  <!-- Panel 2: the transcript. -->
-  <section class="panel transcript">
-    <h2>Transcript <span class="sub" id="transcript-sub"></span></h2>
-    <!-- Pinned, NOT inside the scroller. The disclosure that some of these
-         lines are injected has to be readable at every moment of the run, and
-         a transcript that auto-scrolls would carry it off the top. -->
-    <div class="overlay-note" id="overlay-note" hidden></div>
-    <div class="scroll" id="transcript">
-      <p class="placeholder">Waiting for the call to start.</p>
-    </div>
-  </section>
-
-  <!-- Panel 3: the risk timeline. -->
-  <section class="panel timeline">
-    <h2>Risk timeline
-      <span class="legend">
-        <span class="key key-spk">voice match</span>
-        <span class="key key-cm">synthesis artifacts</span>
-        <span class="key key-gate">deep verification active</span>
-        <span class="key key-band">abstention band</span>
-      </span>
-    </h2>
-    <canvas id="canvas"></canvas>
-    <div class="timeline-note" id="timeline-note">
-      The voice check runs on every window. The artifact check runs only inside the
-      shaded region — that is the whole idea.
-    </div>
-  </section>
-
-  <!-- Panel 5: the evidence. -->
-  <section class="panel evidence">
-    <h2>Evidence <span class="sub" id="evidence-sub"></span></h2>
-    <div class="scroll" id="evidence">
-      <p class="placeholder">No suspicious segments.</p>
-    </div>
-    <div class="ids" id="ids"></div>
-  </section>
-
-</main>
-
-<footer class="footer">
-  <span id="footer-stats">—</span>
-  <span class="spacer"></span>
-  <span id="footer-provenance"></span>
-</footer>
+  </main>
+</div>
 
 <script src="/static/app.js"></script>
 </body>
