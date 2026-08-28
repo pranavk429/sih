@@ -227,7 +227,7 @@ function renderHeader() {
     text($('who-name'), `Speaker ${m.speaker_id}`);
     text($('who-sub'), m.enrolled === false
       ? 'NOT ENROLLED — no reference voice to compare against'
-      : 'enrolled voice · 1 reference sample');
+      : 'enrolled reference voice');
   } else {
     text($('who-name'), 'No call loaded');
     text($('who-sub'), 'pick a call in the rail, then run it');
