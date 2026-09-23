@@ -49,6 +49,7 @@ class EnrolmentStore:
         pcm: np.ndarray,
         sr: int,
         encoder: Any,
+        display_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Embed and persist. `pcm` is used and dropped -- it is never written out.
@@ -59,6 +60,7 @@ class EnrolmentStore:
 
         meta = {
             "speaker_id": speaker_id,
+            "display_name": display_name or speaker_id,
             "created_utc": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
             "model_id": getattr(encoder, "model_id", "unknown"),
             "embedding_dim": int(embedding.shape[0]),

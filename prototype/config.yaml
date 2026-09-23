@@ -146,6 +146,47 @@ server:
   # live-microphone case and for a slower machine.
   lag_warn_ms: 500
 
+asr:
+  # Utterance boundaries. whisper only runs once the silence detector has
+  # decided a sentence ended, so silence_to_cut_ms is the biggest lever on live
+  # latency. 500 ms is what the recorded demo has always used; shortening it
+  # for live costs context, so measure before changing (PLAN-LIVE M2).
+  silence_to_cut_ms: 500
+  min_utterance_ms: 700
+  max_utterance_ms: 12000
+
+live:
+  # The browser-microphone path. See PLAN-LIVE.md §5.
+  max_session_s: 900       # a forgotten open mic should not grow for hours
+  queue_frames: 400        # 8 s of 20 ms chunks before oldest-first dropping
+  no_audio_warn_ms: 700    # macOS denies the mic by returning SILENCE
+
+lookup:
+  # MEASURED — scripts/calibrate_lookup.py, detector/data/pilot, LA_0022
+  # (artifacts/lookup_calibration.json carries the full distributions).
+  #
+  #   same speaker, clean   0.9163 - 0.9252
+  #   same speaker, mobile  0.8777 - 0.8995
+  #   different speaker     n=258  p50 0.8059  p99 0.8998  max 0.9183
+  #
+  # The sets OVERLAP, and that is the honest pilot-scale result rather than a
+  # tuning problem: a degraded mobile channel pulls genuine scores down into
+  # the impostor tail. The rule sets the threshold at the impostor p99, which
+  # accepts 2 of 4 same-speaker pairs and 3 of 258 impostors. Conservative on
+  # purpose -- refusing a genuine speaker shows as "unknown voice" (a visible
+  # miss), while accepting a stranger would put a wrong name on screen.
+  #
+  # This signal is NOT fused into the verdict. It is shown beside the risk, and
+  # the demo presents "unknown voice" as a legitimate outcome.
+  #
+  # The live demo's easy case: enrolment and the call come from the same clean
+  # microphone, which is not the degraded channel this table measures.
+  accept_similarity: 0.8998
+  # One enrolled speaker cannot measure a runner-up margin, so this stays a
+  # configured guard rather than a measured number -- stated in the report.
+  min_margin: 0.05
+  min_consecutive_windows: 2   # a name needs two consecutive windows
+
 paths:
   enrolments_dir: artifacts/enrolments
   demo_dir: artifacts/demo

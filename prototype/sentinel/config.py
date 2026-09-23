@@ -188,6 +188,51 @@ class ServerConfig:
 
 
 @dataclass(frozen=True)
+class AsrConfig:
+    """
+    Utterance boundaries. These are properties of how people speak, not of the
+    models, but they are the single biggest lever on live latency: whisper only
+    runs once the silence detector has decided the sentence ended. They moved
+    here from module constants so the live path can shorten the wait without
+    editing code (PLAN-LIVE.md, L6).
+    """
+
+    silence_to_cut_ms: int = 500
+    min_utterance_ms: int = 700
+    max_utterance_ms: int = 12000
+
+
+@dataclass(frozen=True)
+class LiveConfig:
+    """The browser-microphone path (PLAN-LIVE.md §5)."""
+
+    # Safety cap on one live session. A forgotten open microphone should not
+    # grow an evidence log all afternoon.
+    max_session_s: float = 900.0
+    # Chunks of slack before the input queue starts dropping its oldest audio.
+    # 400 x 20 ms = 8 s, far more than any local hiccup.
+    queue_frames: int = 400
+    # The browser warns that nothing is arriving when the input stays near
+    # silence for this long. macOS denies a microphone by returning DIGITAL
+    # SILENCE, not an error, so without this the screen looks like it works.
+    no_audio_warn_ms: int = 700
+
+
+@dataclass(frozen=True)
+class LookupConfig:
+    """
+    Open-set voice lookup thresholds. Measured by scripts/calibrate_lookup.py
+    on the pilot slice (M1); config.yaml carries the distributions and the
+    trade-off the threshold makes. `accept_similarity` here must match
+    artifacts/lookup_calibration.json -- test_lookup_calibration.py enforces it.
+    """
+
+    accept_similarity: float = 0.8998
+    min_margin: float = 0.05
+    min_consecutive_windows: int = 2
+
+
+@dataclass(frozen=True)
 class PathsConfig:
     enrolments_dir: str = "artifacts/enrolments"
     demo_dir: str = "artifacts/demo"
@@ -202,6 +247,9 @@ class Config:
     gating: GatingConfig = field(default_factory=GatingConfig)
     decision: DecisionConfig = field(default_factory=DecisionConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
+    asr: AsrConfig = field(default_factory=AsrConfig)
+    live: LiveConfig = field(default_factory=LiveConfig)
+    lookup: LookupConfig = field(default_factory=LookupConfig)
     paths: PathsConfig = field(default_factory=PathsConfig)
 
     @staticmethod
