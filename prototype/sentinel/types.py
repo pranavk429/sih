@@ -183,6 +183,54 @@ class TriggerEvent:
 
 
 @dataclass(frozen=True)
+class IntentAssessment:
+    """
+    What the trigger thought of an utterance, whether or not it fired.
+
+    The engine computes this on every transcribed line already -- it has to, to
+    decide -- and used to throw it away when the decision was "no". Keeping it
+    is what lets the UI show a near-miss being *considered*, and it is the same
+    computation the typed try-a-line box returns. One engine, one answer.
+
+    `top_intents` carries (key, label, similarity) so this file needs no import
+    from the trigger package, and `to_json` is the only serialiser.
+    """
+
+    fired: bool
+    stage: str  # "semantic" | "lexical" | "both" | "none"
+    intent_key: str
+    intent_label: str
+    intent_similarity: float
+    benign_similarity: float
+    benign_text: str
+    margin: float
+    matched_terms: Tuple[str, ...] = ()
+    top_intents: Tuple[Tuple[str, str, float], ...] = ()
+    min_words_met: bool = True
+    reason: str = ""
+
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "type": "intent_assessment",
+            "fired": bool(self.fired),
+            "stage": self.stage,
+            "intent_key": self.intent_key,
+            "intent_label": self.intent_label,
+            "intent_similarity": round(float(self.intent_similarity), 4),
+            "benign_similarity": round(float(self.benign_similarity), 4),
+            "benign_text": self.benign_text,
+            "margin": round(float(self.margin), 4),
+            "matched_terms": list(self.matched_terms),
+            "top_intents": [
+                {"key": key, "label": label, "similarity": round(float(sim), 4)}
+                for key, label, sim in self.top_intents
+            ],
+            "min_words_met": bool(self.min_words_met),
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True)
 class EvidenceSegment:
     """One suspicious span, for the evidence panel."""
 

@@ -58,7 +58,12 @@ from sentinel.trigger.intents import (
     benign_sentences,
     canonical_sentences,
 )
-from sentinel.types import TriggerEvent, Utterance
+from sentinel.types import IntentAssessment, TriggerEvent, Utterance
+
+# How many intent families travel with each assessment for the UI to show.
+# Three is enough to make "it considered the right family and lost to a benign
+# anchor" visible without turning the transcript into a matrix.
+TOP_INTENTS = 3
 
 
 def _term_pattern(term: str) -> "re.Pattern":
@@ -88,6 +93,7 @@ class Match(NamedTuple):
     intent_similarity: float
     benign_similarity: float
     matched_sentence: str
+    benign_sentence: str = ""
 
     @property
     def margin(self) -> float:
@@ -116,23 +122,48 @@ class SemanticMatcher:
         self._keys = keys
         self._sentences = sentences
         self._intents = self._encode(sentences)
-        self._benign = self._encode(benign_sentences())
+        self._benign_sentences = list(benign_sentences())
+        self._benign = self._encode(self._benign_sentences)
 
     def _encode(self, texts: Sequence[str]) -> np.ndarray:
         vectors = self._model.encode(list(texts), convert_to_numpy=True,
                                      normalize_embeddings=True, show_progress_bar=False)
         return np.asarray(vectors, dtype=np.float32)
 
-    def best_match(self, text: str) -> Match:
+    def analyse(self, text: str) -> Tuple[Match, Tuple[Tuple[str, str, float], ...]]:
+        """
+        One encode, everything the decision and the explanation need.
+
+        Returns the best match (with the benign anchor it lost to or beat) and
+        the `TOP_INTENTS` families by similarity, so the UI can show which
+        family a sentence was closest to even when nothing fired.
+        """
         vector = self._encode([text])[0]
         sims = self._intents @ vector  # both normalised, so this is cosine
-        idx = int(np.argmax(sims))
-        return Match(
+        order = np.argsort(-sims)
+        idx = int(order[0])
+        benign_sims = self._benign @ vector
+        b_idx = int(np.argmax(benign_sims))
+        match = Match(
             intent_key=self._keys[idx],
             intent_similarity=float(sims[idx]),
-            benign_similarity=float(np.max(self._benign @ vector)),
+            benign_similarity=float(benign_sims[b_idx]),
             matched_sentence=self._sentences[idx],
+            benign_sentence=self._benign_sentences[b_idx],
         )
+        top = tuple(
+            (
+                self._keys[int(i)],
+                LABELS.get(self._keys[int(i)], self._keys[int(i)]),
+                float(sims[int(i)]),
+            )
+            for i in order[:TOP_INTENTS]
+        )
+        return match, top
+
+    def best_match(self, text: str) -> Match:
+        """Kept for callers that only need the decision inputs."""
+        return self.analyse(text)[0]
 
 
 class TriggerEngine:
@@ -147,32 +178,48 @@ class TriggerEngine:
         self.cfg = trigger_cfg
         self.matcher = matcher if matcher is not None else SemanticMatcher(model_cfg)
 
-    def evaluate(self, utterance: Utterance) -> Optional[TriggerEvent]:
-        text = (utterance.text or "").strip()
-        if not text:
-            return None
+    def assess(
+        self, utterance: Utterance
+    ) -> Tuple[IntentAssessment, Optional[TriggerEvent]]:
+        """
+        Everything the engine thinks, and the event if it fired.
 
+        This is the single implementation: `evaluate()` below is a thin wrapper
+        and the pipeline calls this, so the transcript's margin and the trigger
+        can never come from two different computations.
+        """
+        text = (utterance.text or "").strip()
+
+        if not text:
+            return self._quiet(utterance, reason="empty transcript"), None
+
+        words = len(text.split())
         # Very short utterances carry too little for either stage to judge.
         # "transfer" on its own is a word, not an instruction.
-        if len(text.split()) < self.cfg.min_words:
-            return None
+        if words < self.cfg.min_words:
+            return self._quiet(
+                utterance,
+                reason=f"too short to judge ({words} words, minimum "
+                       f"{self.cfg.min_words})",
+                min_words_met=False,
+            ), None
 
         hits = lexical_hits(text)
-        match = self.matcher.best_match(text)
+        match, top = self.matcher.analyse(text)
         margin = match.margin
 
         fired_semantic = margin >= self.cfg.semantic_margin
         fired_lexical = bool(hits) and margin >= self.cfg.lexical_confirm_floor
-
-        if not (fired_semantic or fired_lexical):
-            return None
+        fired = fired_semantic or fired_lexical
 
         if fired_semantic and hits:
             stage = "both"
         elif fired_semantic:
             stage = "semantic"
-        else:
+        elif fired_lexical:
             stage = "lexical"
+        else:
+            stage = "none"
 
         # Prefer the intent stage 1 agreed on, so the reported family matches
         # the words a listener actually heard.
@@ -181,14 +228,73 @@ class TriggerEngine:
         if stage in ("lexical", "both") and hit_keys:
             intent_key = hit_keys[0]
 
-        return TriggerEvent(
+        matched_terms = tuple(sorted({term for k, term in hits if k == intent_key}))
+
+        if fired:
+            reason = (
+                f"margin {margin:+.2f} clears {self.cfg.semantic_margin:+.2f}"
+                if fired_semantic
+                else f"keyword hit confirmed by margin {margin:+.2f}"
+            )
+        else:
+            if margin >= 0:
+                reason = (
+                    f"considered, not confirmed: margin {margin:+.2f} below the "
+                    f"{self.cfg.semantic_margin:+.2f} line, and no keyword to "
+                    f"lean on"
+                )
+            else:
+                reason = (
+                    f"stayed quiet: closer to normal call content than to a "
+                    f"fraud intent ({margin:+.2f})"
+                )
+
+        assessment = IntentAssessment(
+            fired=fired,
+            stage=stage,
+            intent_key=intent_key,
+            intent_label=LABELS.get(intent_key, intent_key),
+            intent_similarity=match.intent_similarity,
+            benign_similarity=match.benign_similarity,
+            benign_text=match.benign_sentence,
+            margin=margin,
+            matched_terms=matched_terms,
+            top_intents=top,
+            min_words_met=True,
+            reason=reason,
+        )
+        if not fired:
+            return assessment, None
+
+        event = TriggerEvent(
             t_ms=utterance.t_end_ms,
             utterance=utterance,
-            intent=LABELS.get(intent_key, intent_key),
+            intent=assessment.intent_label,
             similarity=match.intent_similarity,
             margin=margin,
             stage=stage,
-            matched_terms=tuple(sorted({term for k, term in hits if k == intent_key})),
+            matched_terms=matched_terms,
+        )
+        return assessment, event
+
+    def evaluate(self, utterance: Utterance) -> Optional[TriggerEvent]:
+        """The decision only. Kept as the stable entry point for callers."""
+        return self.assess(utterance)[1]
+
+    def _quiet(
+        self, utterance: Utterance, reason: str, min_words_met: bool = True
+    ) -> IntentAssessment:
+        return IntentAssessment(
+            fired=False,
+            stage="none",
+            intent_key="",
+            intent_label="",
+            intent_similarity=0.0,
+            benign_similarity=0.0,
+            benign_text="",
+            margin=0.0,
+            min_words_met=min_words_met,
+            reason=reason,
         )
 
     def describe(self, event: TriggerEvent) -> str:

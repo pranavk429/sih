@@ -46,6 +46,37 @@ POSITIVES = (
     "I am the director, wire it now",
 )
 
+# Indirect positives promoted by measurement (PLAN-LIVE M3). Each one was in
+# scripts/eval_trigger.py's candidate list, fired there, and had every topical
+# trap stay quiet; the margins are in that tool's output. They are phrased the
+# way a social engineer actually talks -- the act requested identifies the
+# family, and no keyword does.
+INDIRECT_POSITIVES = (
+    "read me back whatever just came through on your handset",
+    "I only need the three numbers off the back",
+    "there's a message on your phone, stay on the line and read it out to me",
+    "I have the commissioner holding on the other line, this needs to be done "
+    "in the next few minutes",
+    "let's not wake the second pair of eyes on this one",
+    "if anyone from the branch rings, you were in a meeting",
+    "I'd rather this didn't travel beyond the two of us",
+)
+
+# The topical twins of those positives. Each is a sentence a legitimate call
+# contains that lives on the same subject. They were the reason the first
+# candidate round failed (6 of 8 fired) and the reason the benign-anchor class
+# grew a protective-advice section. Measured quiet after that change.
+TRAPS = (
+    "the account will be empty by the time the overnight sweep runs",
+    "never share that code with anyone, not even if they say they're from the bank",
+    "if you need anything else, please call us back on the number on the website",
+    "for your security that needs both approvers, I can't action it on my own",
+    "I'm putting you through to the fraud team, they'll verify a couple of details",
+    "we'll settle the invoice automatically on the due date, nothing needed from you",
+    "keep your PIN somewhere safe and never write it down",
+    "take your time, there's no rush, we can sort it tomorrow",
+)
+
 
 @pytest.fixture(scope="module")
 def engine(cfg):
@@ -88,6 +119,38 @@ def test_paraphrases_with_no_keyword_overlap_fire(engine, text):
     assert event.stage == "semantic", (
         f"{text!r} fired via stage {event.stage}; the point of this case is that "
         "the lexical prefilter cannot see it"
+    )
+
+
+@pytest.mark.parametrize("text", INDIRECT_POSITIVES)
+def test_indirect_instructions_fire_by_meaning_alone(engine, text):
+    """
+    PLAN-LIVE M3, pinned. These are the phrasings that carry no keyword and
+    read like ordinary conversation; each was promoted only after
+    scripts/eval_trigger.py measured it firing and every trap below quiet.
+    """
+    event = engine.evaluate(_utt(text))
+    assert event is not None, f"indirect instruction missed: {text!r}"
+    assert event.stage == "semantic", (
+        f"{text!r} fired via {event.stage}; these cases exist because stage 1 "
+        "cannot see them"
+    )
+
+
+@pytest.mark.parametrize("text", TRAPS)
+def test_topical_traps_stay_quiet(engine, text):
+    """
+    The sentence a legitimate call contains right next to a fraud-induced one.
+
+    The first candidate round fired on six of these -- "keep your PIN somewhere
+    safe", "never share that code with anyone" -- because the encoder is close
+    to polarity-blind and the intent side already owned the topic. The fix was
+    benign anchors, not a threshold change; these cases keep it fixed.
+    """
+    event = engine.evaluate(_utt(text))
+    assert event is None, (
+        f"trigger fired on an innocent line about the same topic: {text!r} "
+        f"(intent={event.intent}, margin={event.margin:+.3f})"
     )
 
 

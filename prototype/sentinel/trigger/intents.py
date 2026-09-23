@@ -64,6 +64,12 @@ INTENTS: Tuple[Intent, ...] = (
             "what is the CVV on the back of the card",
             "share the verification code that was sent to you",
             "confirm your PIN for me",
+            # --- indirect, promoted from scripts/eval_trigger.py (PLAN-LIVE M3).
+            # No credential word is spoken; the act requested is what identifies
+            # the family. Measured before promotion, traps quiet after.
+            "read me back whatever just came through on your handset",
+            "I only need the three numbers off the back",
+            "there's a message on your phone, stay on the line and read it out to me",
         ),
         terms=(
             "otp", "one time password", "one-time password", "password",
@@ -80,6 +86,9 @@ INTENTS: Tuple[Intent, ...] = (
             "I am the CFO and I am instructing you to do this immediately",
             "do it now, there is no time to check with anyone",
             "this is urgent and it has to happen before the deadline tonight",
+            # indirect, promoted (M3): borrowed authority, no urgency keyword
+            "I have the commissioner holding on the other line, this needs to be "
+            "done in the next few minutes",
         ),
         # NB: terms must be specific enough not to occur in ordinary English.
         # "board" was here and fired on "the board would refer it to the
@@ -102,6 +111,8 @@ INTENTS: Tuple[Intent, ...] = (
             "bypass the maker checker for this transaction",
             "override the standard procedure just this time",
             "process it without the usual paperwork",
+            # indirect, promoted (M3)
+            "let's not wake the second pair of eyes on this one",
         ),
         terms=(
             "skip the", "bypass", "override", "without approval",
@@ -120,6 +131,9 @@ INTENTS: Tuple[Intent, ...] = (
             "keep this between us until it is done",
             "there is no need to call me back on this number",
             "don't discuss this with the compliance team",
+            # indirect, promoted (M3): concealment without a "don't tell" verb
+            "if anyone from the branch rings, you were in a meeting",
+            "I'd rather this didn't travel beyond the two of us",
         ),
         terms=(
             "don't call", "do not call", "dont call", "don't tell",
@@ -197,6 +211,24 @@ BENIGN_ANCHORS: Tuple[str, ...] = (
     "the government said it would look into the matter",
     "people have been doing it that way for years",
     "nothing much has changed since then",
+    "we were talking about our time at school",
+    "he told us about his life before he moved away",
+    # --- protective advice, reassurance and routine procedure ---
+    # Measured problem: MiniLM is close to polarity-blind. "never share that
+    # code with anyone" sits near "share the verification code", and
+    # "keep your PIN safe" near "confirm your PIN". The fraud-intent side of the
+    # comparison already owns those topics, so the benign class has to own the
+    # protective and routine half of them explicitly, or the trigger fires on a
+    # bank's own security advice (scripts/eval_trigger.py, traps).
+    "never share your password or one time code with anyone",
+    "we will never ask you for your PIN or password",
+    "please keep your card and PIN somewhere safe",
+    "there is no rush, we can do this at your convenience",
+    "that is not something I can action on my own",
+    "the payment will be made automatically on the due date",
+    "please call us back on the number printed on your card",
+    "this is a routine security check and nothing to worry about",
+    "that needs approval from someone else, I cannot do it myself",
 )
 
 
@@ -283,11 +315,17 @@ HARD_POSITIVES: Tuple[str, ...] = (
 # test says so and it gets promoted.
 # --------------------------------------------------------------------------
 
-# A high-risk paraphrase the semantic stage does NOT catch. "details" pulls it
-# toward the benign anchor about updating registered details, and there is no
-# money word for the intent side to grip.
+# High-risk paraphrases the semantic stage does NOT catch. Measured by
+# scripts/eval_trigger.py (PLAN-LIVE M3); each one's margin is in the eval
+# output. Kept visible rather than tuned away: the first predates the live
+# work, the rest came out of the indirect-phrasing research pass and were
+# measured, not assumed.
 KNOWN_MISSES: Tuple[str, ...] = (
     "just move it over to the new details before close of business",
+    "settle it against the alternate details on the note I sent",
+    "that side needs to be empty by morning",
+    "the window closes today, I would move now if I were you",
+    "put it through on your own authority, I'll sign off when I'm back",
 )
 
 # Innocent content that DOES fire, from the held-out set. Genuinely confusable:
