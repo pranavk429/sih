@@ -24,11 +24,12 @@ from typing import Callable, List, Optional
 import numpy as np
 
 from sentinel.audio.vad import EnergyVad
-from sentinel.config import AudioConfig, ModelConfig
+from sentinel.config import AsrConfig, AudioConfig, ModelConfig
 from sentinel.types import Frame, Utterance
 
-# Utterance boundaries. In config-speak these would be more knobs; they are
-# properties of how people speak rather than of our models, so they live here.
+# Utterance boundaries default here so the module works without a config, but
+# the pipeline passes its own: the single biggest lever on live latency is how
+# long the transcriber waits after the last word (PLAN-LIVE.md, L6).
 SILENCE_TO_CUT_MS = 500
 MIN_UTTERANCE_MS = 700
 MAX_UTTERANCE_MS = 12_000
@@ -94,9 +95,11 @@ class AsrThread:
         audio_cfg: AudioConfig,
         on_utterance: Callable[[Utterance], None],
         maxsize: int = 200,
+        asr_cfg: Optional[AsrConfig] = None,
     ) -> None:
         self.transcriber = transcriber
         self.audio_cfg = audio_cfg
+        self.asr_cfg = asr_cfg or AsrConfig()
         self.on_utterance = on_utterance
         self.vad = EnergyVad(audio_cfg)
 
@@ -164,7 +167,8 @@ class AsrThread:
 
         buffered_ms = int(round(sum(len(c) for c in self._buffer)
                                 / self.audio_cfg.sample_rate * 1000))
-        if self._silence_ms >= SILENCE_TO_CUT_MS or buffered_ms >= MAX_UTTERANCE_MS:
+        if (self._silence_ms >= self.asr_cfg.silence_to_cut_ms
+                or buffered_ms >= self.asr_cfg.max_utterance_ms):
             self._flush()
 
     def _flush(self) -> None:
@@ -176,7 +180,7 @@ class AsrThread:
         self._reset()
 
         duration_ms = int(round(len(pcm) / self.audio_cfg.sample_rate * 1000))
-        if duration_ms < MIN_UTTERANCE_MS:
+        if duration_ms < self.asr_cfg.min_utterance_ms:
             return
         try:
             utterance = self.transcriber.transcribe(pcm, self.audio_cfg.sample_rate, start_ms)

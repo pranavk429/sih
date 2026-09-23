@@ -34,6 +34,7 @@ from sentinel.decision.calibration import Calibration
 from sentinel.decision.engine import aggregate, decide
 from sentinel.decision.fusion import build_fusion
 from sentinel.decision.gating import AlwaysOnGating, build_gating
+from sentinel.enrolment.gallery import LookupTracker
 from sentinel.models.resemblyzer_spk import SilentAudio
 from sentinel.trigger.engine import ScriptedOverlay, TriggerEngine
 from sentinel.types import (
@@ -69,6 +70,11 @@ class RunStats:
     max_lag_ms: int = 0
     asr_blocked_pushes: int = 0
     events_dropped: int = 0
+    # Live path: how many windows were looked up against the voice gallery, and
+    # how much incoming audio the live source had to drop to keep up. A drop is
+    # a real gap in the call, so it is reported rather than hidden (SPEC §12).
+    voice_lookups: int = 0
+    audio_dropped_ms: int = 0
     wall_s: float = 0.0
     stream_s: float = 0.0
     verdict: Optional[Any] = None
@@ -120,6 +126,8 @@ class Orchestrator:
         mode: Optional[str] = None,
         ground_truth: Optional[str] = None,
         on_event: Optional[EventSink] = None,
+        live: bool = False,
+        gallery=None,
     ) -> RunStats:
         cfg = self.cfg
         emit: EventSink = on_event or (lambda _e: None)
@@ -130,6 +138,16 @@ class Orchestrator:
         )
         naive = isinstance(gating, AlwaysOnGating)
 
+        # Live audio is nobody's recording. The scripted overlay exists to put a
+        # high-risk sentence into demos whose audio has none; injecting it into a
+        # live call would be putting words in the speaker's mouth, so live mode
+        # never enables it regardless of config (PLAN-LIVE.md F1/F5).
+        overlay = ScriptedOverlay(()) if live else ScriptedOverlay(cfg.trigger.scripted_overlay)
+
+        # Voice lookup over the enrolments, if there are any. Loaded outside and
+        # passed in so the server can report the gallery in the run header.
+        tracker = LookupTracker(cfg.lookup.min_consecutive_windows) if gallery else None
+
         # History must outlast the pre-roll or backfill points at audio that has
         # already been discarded and the pre-roll silently does nothing.
         framer = Framer(
@@ -139,7 +157,6 @@ class Orchestrator:
             history_s=cfg.gating.pre_roll_s + cfg.audio.window_s + 1.0,
         )
 
-        overlay = ScriptedOverlay(cfg.trigger.scripted_overlay)
         stats = RunStats()
         triggers: List[TriggerEvent] = []
         pending_utterances: List[Utterance] = []
@@ -153,11 +170,57 @@ class Orchestrator:
             asr = self.asr_thread_factory(pending_utterances.append)
             asr.start()
 
-        emit(self._start_event(source, speaker_id, gating, overlay, ground_truth, mode))
+        emit(self._start_event(source, speaker_id, gating, overlay, ground_truth, mode,
+                               live=live, gallery=gallery))
 
         started = time.monotonic()
         last_verdict_state = None
         stream_ms = 0
+
+        def handle_utterance(utterance: Utterance) -> None:
+            """
+            Assess one transcript line, and open deep verification if it fired.
+
+            One function for both callers on purpose: lines that arrive while
+            frames are still flowing, and the last lines the ASR thread flushes
+            after the source has ended. The drain used to emit those final lines
+            unassessed, which meant a presenter who spoke and then stopped could
+            watch their last instruction sit in the transcript with no margin,
+            no trigger and no verdict. That is the same missed trigger
+            `transcriber.py` refuses to risk on its input queue, just at the end
+            of the stream instead of in the middle of it.
+            """
+            stats.utterances += 1
+            # One call, one computation: the assessment is what the transcript
+            # shows, and the event (if any) is what wakes deep verification.
+            # They can never disagree.
+            assessment, event = self.trigger_engine.assess(utterance)
+            payload = utterance.to_json()
+            payload["assessment"] = assessment.to_json()
+            emit(payload)
+            if event is None:
+                return
+            triggers.append(event)
+            stats.triggers += 1
+            payload = event.to_json()
+            payload["description"] = self.trigger_engine.describe(event)
+            # The spans the UI shades on the timeline. Computed here rather than
+            # re-derived in JavaScript from pre_roll/hold -- two implementations
+            # of the gating window would eventually disagree, and the screen
+            # would then be showing something other than what the system did.
+            payload["active_regions"] = [
+                list(r) for r in gating.active_regions(triggers)
+            ]
+            emit(payload)
+            if self.evidence is not None:
+                self.evidence.append("trigger", payload, t_ms=event.t_ms)
+
+            # Pre-roll: score the windows the instruction actually landed in,
+            # which have already gone past.
+            self._backfill(
+                framer, gating, triggers, window_index, cm_scores,
+                deep_seqs, stats, emit,
+            )
 
         try:
             for frame in source.frames():
@@ -171,41 +234,14 @@ class Orchestrator:
                     pending_utterances.append(utterance)
 
                 while pending_utterances:
-                    utterance = pending_utterances.pop(0)
-                    stats.utterances += 1
-                    emit(utterance.to_json())
-                    event = self.trigger_engine.evaluate(utterance)
-                    if event is None:
-                        continue
-                    triggers.append(event)
-                    stats.triggers += 1
-                    payload = event.to_json()
-                    payload["description"] = self.trigger_engine.describe(event)
-                    # The spans the UI shades on the timeline. Computed here
-                    # rather than re-derived in JavaScript from pre_roll/hold --
-                    # two implementations of the gating window would eventually
-                    # disagree, and the screen would then be showing something
-                    # other than what the system did.
-                    payload["active_regions"] = [
-                        list(r) for r in gating.active_regions(triggers)
-                    ]
-                    emit(payload)
-                    if self.evidence is not None:
-                        self.evidence.append("trigger", payload, t_ms=event.t_ms)
-
-                    # Pre-roll: score the windows the instruction actually
-                    # landed in, which have already gone past.
-                    self._backfill(
-                        framer, gating, triggers, window_index, cm_scores,
-                        deep_seqs, stats, emit,
-                    )
+                    handle_utterance(pending_utterances.pop(0))
 
                 for window in framer.push(frame):
                     window_index[window.seq] = window
                     stats.windows_total += 1
                     self._score_window(
-                        window, gating, triggers, reference_embedding,
-                        spk_scores, cm_scores, deep_seqs, stats, emit,
+                        window, gating, triggers, reference_embedding, gallery,
+                        tracker, spk_scores, cm_scores, deep_seqs, stats, emit,
                     )
 
                     verdict = self._decide(
@@ -257,19 +293,21 @@ class Orchestrator:
                 window_index[window.seq] = window
                 stats.windows_total += 1
                 self._score_window(
-                    window, gating, triggers, reference_embedding,
-                    spk_scores, cm_scores, deep_seqs, stats, emit,
+                    window, gating, triggers, reference_embedding, gallery,
+                    tracker, spk_scores, cm_scores, deep_seqs, stats, emit,
                 )
         finally:
             if asr is not None:
                 asr.close()
                 stats.asr_blocked_pushes = asr.blocked_pushes
 
-        # Drain anything ASR produced during its final flush.
+        stats.audio_dropped_ms = int(getattr(source, "dropped_ms", 0))
+
+        # Drain anything ASR produced during its final flush. These lines are
+        # assessed exactly like the ones that arrived mid-run: the last thing a
+        # speaker says is not less of an instruction than the first.
         while pending_utterances:
-            utterance = pending_utterances.pop(0)
-            stats.utterances += 1
-            emit(utterance.to_json())
+            handle_utterance(pending_utterances.pop(0))
 
         final = self._decide(
             gating, triggers, spk_scores, cm_scores, window_index, deep_seqs,
@@ -308,12 +346,15 @@ class Orchestrator:
             "wall_s": round(stats.wall_s, 2),
             "stream_s": round(stats.stream_s, 2),
             "mode": gating.name,
+            "voice_lookups": stats.voice_lookups,
+            "audio_dropped_ms": stats.audio_dropped_ms,
         }
         emit(payload)
         return stats
 
     # ------------------------------------------------------------------
-    def _start_event(self, source, speaker_id, gating, overlay, ground_truth, mode):
+    def _start_event(self, source, speaker_id, gating, overlay, ground_truth, mode,
+                     live=False, gallery=None):
         return {
             "type": "run_start",
             "mode": gating.name,
@@ -321,6 +362,14 @@ class Orchestrator:
             "speaker_id": speaker_id,
             "ground_truth": ground_truth,
             "duration_s": getattr(source, "duration_s", None),
+            "live": bool(live),
+            "source": "live" if live else "file",
+            "gallery": {
+                "size": len(gallery),
+                "accept_similarity": gallery.accept_similarity,
+                "min_margin": gallery.min_margin,
+                "min_consecutive_windows": self.cfg.lookup.min_consecutive_windows,
+            } if gallery else None,
             "scripted_overlay": overlay.enabled,
             "calibration": self.cal.header(),
             "band": [self.cfg.decision.low_thr, self.cfg.decision.high_thr],
@@ -329,10 +378,19 @@ class Orchestrator:
             "pre_roll_s": self.cfg.gating.pre_roll_s,
             "hold_s": self.cfg.gating.hold_s,
             "model_ids": [self.cm.model_id, self.spk.model_id],
-            "honesty": "Simulated live call — recorded audio streamed in real time.",
+            # SPEC §12, extended for the live path. The live sentence is a claim
+            # the code makes true: LiveSource holds a queue and the Framer holds
+            # a rolling window, and nothing on this path opens a file for
+            # writing. The privacy test walks the tree after a live run.
+            "honesty": (
+                "Live microphone on this machine — audio is analysed in memory "
+                "and never written to disk."
+                if live else
+                "Simulated live call — recorded audio streamed in real time."
+            ),
         }
 
-    def _score_window(self, window, gating, triggers, reference,
+    def _score_window(self, window, gating, triggers, reference, gallery, tracker,
                       spk_scores, cm_scores, deep_seqs, stats, emit) -> None:
         is_speech, ratio = self.vad.measure(window.pcm, window.sr)
         if not is_speech:
@@ -345,17 +403,57 @@ class Orchestrator:
 
         stats.windows_scored += 1
 
+        # One embedding per window, shared by the reference check and the voice
+        # lookup. Computing it twice would be the same number twice at twice the
+        # cost, and the two would be free to drift apart if either changed.
+        embedding = None
+        if reference is not None or gallery:
+            try:
+                embedding = self.spk.embed(window.pcm, window.sr)
+            except SilentAudio:
+                if reference is not None:
+                    spk_scores[window.seq] = RiskScore(
+                        SPEAKER, 0.0, window.t_start_ms, window.t_end_ms,
+                        self.spk.model_id, SILENT,
+                    )
+                    emit({**spk_scores[window.seq].to_json(), "seq": window.seq,
+                          "voiced_ratio": round(ratio, 3)})
+            except Exception:  # noqa: BLE001 -- a model failure is a status, never a crash
+                if reference is not None:
+                    spk_scores[window.seq] = RiskScore(
+                        SPEAKER, 0.0, window.t_start_ms, window.t_end_ms,
+                        self.spk.model_id, ERROR,
+                    )
+                    emit({**spk_scores[window.seq].to_json(), "seq": window.seq,
+                          "voiced_ratio": round(ratio, 3)})
+
         # The speaker check runs ALWAYS. It is cheap and it is the primary
         # signal; the countermeasure is what gets gated. That ordering is the
         # thesis expressed in code (SPEC §7.3).
-        if reference is not None:
+        if reference is not None and embedding is not None:
             spk_scores[window.seq] = self._safe_score(
                 SPEAKER, window,
-                lambda: self.spk.risk(reference, self.spk.embed(window.pcm, window.sr)),
+                lambda: self.spk.risk(reference, embedding),
                 self.spk.model_id,
             )
             emit({**spk_scores[window.seq].to_json(), "seq": window.seq,
                   "voiced_ratio": round(ratio, 3)})
+
+        # Open-set lookup: who is this, among everyone enrolled? Separate from
+        # the verdict on purpose -- it is a visible signal the demo explains,
+        # not a score fused into the decision (PLAN-LIVE.md §5).
+        if gallery and tracker is not None and embedding is not None:
+            match = gallery.lookup(embedding)
+            state = tracker.update(match)
+            stats.voice_lookups += 1
+            emit({
+                "type": "voice_lookup",
+                "t_start_ms": window.t_start_ms,
+                "t_end_ms": window.t_end_ms,
+                "seq": window.seq,
+                "gallery_size": len(gallery),
+                **state,
+            })
 
         if gating.should_run_deep(window.t_end_ms, triggers):
             self._run_deep(window, cm_scores, deep_seqs, stats, emit,

@@ -2075,7 +2075,9 @@
    "alerts": 40,
    "false_alarms": 0,
    "stream_s": 36.62,
-   "mode": "triggered"
+   "mode": "triggered",
+   "voice_lookups": 0,
+   "audio_dropped_ms": 0
   }
  }
 ]
