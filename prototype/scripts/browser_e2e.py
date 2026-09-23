@@ -82,9 +82,16 @@ class Report:
 
 
 # ---------------------------------------------------------------- fixtures
-def make_voice_wav(path: Path, text: str, voice: str) -> None:
-    """macOS `say` -> 16 kHz mono 16-bit PCM WAV. Chrome ignores other formats."""
-    if path.exists():
+def make_voice_wav(path: Path, text: str, voice: str, force: bool = False) -> None:
+    """
+    macOS `say` -> 16 kHz mono 16-bit PCM WAV. Chrome ignores other formats.
+
+    `force` is on for the fixtures this script generates itself: a WAV left in
+    the output directory by an older version of the script would otherwise be
+    reused, and the run would be testing last week's sentence. Files passed
+    with --voice-a/--voice-b are never touched.
+    """
+    if path.exists() and not force:
         return
     if not shutil.which("say") or not shutil.which("afconvert"):
         raise SystemExit(
@@ -494,11 +501,11 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     voice_a = Path(args.voice_a) if args.voice_a else out / "voice-a.wav"
     voice_b = Path(args.voice_b) if args.voice_b else out / "voice-b.wav"
-    make_voice_wav(voice_a, VOICE_A_SCRIPT, "Samantha")
+    make_voice_wav(voice_a, VOICE_A_SCRIPT, "Samantha", force=not args.voice_a)
     # Rishi (en_IN) for the second speaker: "crore" is a normal word for that
     # voice, so the transcriber hears it. The same line through Daniel (en_GB)
     # came back as "transfer to crawl to" -- an ASR miss, not a trigger bug.
-    make_voice_wav(voice_b, VOICE_B_SCRIPT, "Rishi")
+    make_voice_wav(voice_b, VOICE_B_SCRIPT, "Rishi", force=not args.voice_b)
 
     try:
         from playwright.sync_api import sync_playwright
