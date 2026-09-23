@@ -1,0 +1,42 @@
+{
+  "created_utc": "2026-09-23T13:18:43+00:00",
+  "assets": [
+    {
+      "id": "say-daniel",
+      "file": "say-daniel.wav",
+      "generator": "macOS say",
+      "generator_detail": "system TTS voice 'Daniel'",
+      "source_speaker": null,
+      "consent": "not applicable -- a system voice, not a person",
+      "text": "Sir, this is regarding the vendor settlement we discussed. I need you to transfer two crore to this account tonight. Please do not call the branch, there is no time for the usual approval.",
+      "ground_truth": "synthetic_tts",
+      "created_utc": "2026-09-23T13:18:42+00:00",
+      "note": "Synthetic speech, but not a clone of any enrolled person. Report it with make_clone_report.py before demoing it."
+    },
+    {
+      "id": "say-karen",
+      "file": "say-karen.wav",
+      "generator": "macOS say",
+      "generator_detail": "system TTS voice 'Karen'",
+      "source_speaker": null,
+      "consent": "not applicable -- a system voice, not a person",
+      "text": "Sir, this is regarding the vendor settlement we discussed. I need you to transfer two crore to this account tonight. Please do not call the branch, there is no time for the usual approval.",
+      "ground_truth": "synthetic_tts",
+      "created_utc": "2026-09-23T13:18:43+00:00",
+      "note": "Synthetic speech, but not a clone of any enrolled person. Report it with make_clone_report.py before demoing it."
+    },
+    {
+      "id": "say-samantha",
+      "file": "say-samantha.wav",
+      "generator": "macOS say",
+      "generator_detail": "system TTS voice 'Samantha'",
+      "source_speaker": null,
+      "consent": "not applicable -- a system voice, not a person",
+      "text": "Sir, this is regarding the vendor settlement we discussed. I need you to transfer two crore to this account tonight. Please do not call the branch, there is no time for the usual approval.",
+      "ground_truth": "synthetic_tts",
+      "created_utc": "2026-09-23T13:18:41+00:00",
+      "note": "Synthetic speech, but not a clone of any enrolled person. Report it with make_clone_report.py before demoing it."
+    }
+  ],
+  "updated_utc": "2026-09-23T13:18:43+00:00"
+}

@@ -59,11 +59,12 @@ class StubOrchestrator:
         self._stop = True
 
     def run(self, source, reference_embedding=None, speaker_id=None, mode=None,
-            ground_truth=None, on_event=None):
+            ground_truth=None, on_event=None, live=False, gallery=None):
         self.runs += 1
         self._stop = False
         on_event({"type": "run_start", "mode": mode or "triggered",
-                  "ground_truth": ground_truth, "speaker_id": speaker_id})
+                  "ground_truth": ground_truth, "speaker_id": speaker_id,
+                  "live": live, "gallery": None})
         for i in range(self.n_events):
             if self._stop:
                 break

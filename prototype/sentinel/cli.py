@@ -80,30 +80,61 @@ def default_speaker(cfg: Config) -> Optional[str]:
     return manifest["speaker_id"] if manifest else None
 
 
+def record_mic(cfg: Config, seconds: float):
+    """
+    Record `seconds` of microphone audio and return 16 kHz mono float32.
+
+    Used by `enrol --mic`. Blocks until the recording is done, which is the
+    honest thing for a CLI: the user asked for ten seconds of audio.
+    """
+    import numpy as np
+
+    source = MicSource(
+        sample_rate=cfg.audio.sample_rate,
+        frame_ms=cfg.audio.frame_ms,
+        max_seconds=seconds,
+    )
+    try:
+        chunks = [frame.pcm for frame in source.frames()]
+    finally:
+        source.close()
+    if not chunks:
+        return np.zeros(0, dtype=np.float32)
+    return np.concatenate(chunks).astype(np.float32)
+
+
 # --------------------------------------------------------------------------
 # enrol
 # --------------------------------------------------------------------------
 def cmd_enrol(args, cfg: Config) -> int:
     from sentinel.models.resemblyzer_spk import ResemblyzerSpeakerEncoder
 
-    path = resolve_audio(cfg, args.audio, args.demo)
     speaker_id = args.speaker or default_speaker(cfg)
     if not speaker_id:
         raise SystemExit("--speaker is required")
 
-    import soundfile as sf
+    if args.mic:
+        print(f"recording {args.seconds:.0f}s from the microphone...")
+        pcm = record_mic(cfg, args.seconds)
+        if pcm.size == 0:
+            raise SystemExit("no audio captured -- check the microphone permission")
+        source_label = f"microphone ({pcm.size / cfg.audio.sample_rate:.1f}s)"
+    else:
+        path = resolve_audio(cfg, args.audio, args.demo)
+        import soundfile as sf
 
-    from sentinel.audio.resample import prepare
+        from sentinel.audio.resample import prepare
 
-    pcm, sr_in = sf.read(path, dtype="float32", always_2d=False)
-    pcm = prepare(pcm, sr_in, cfg.audio.sample_rate)
+        raw, sr_in = sf.read(path, dtype="float32", always_2d=False)
+        pcm = prepare(raw, sr_in, cfg.audio.sample_rate)
+        source_label = os.path.relpath(path)
 
     encoder = ResemblyzerSpeakerEncoder(min_rms=cfg.audio.min_embed_rms)
     store = EnrolmentStore(cfg.paths.enrolments_dir)
     meta = store.enrol(speaker_id, pcm, cfg.audio.sample_rate, encoder)
 
     print(f"enrolled {speaker_id}")
-    print(f"  source     : {os.path.relpath(path)}  ({meta['duration_s']}s)")
+    print(f"  source     : {source_label}")
     print(f"  model      : {meta['model_id']}")
     print(f"  stored     : {meta['embedding_dim']}-dim vector in {cfg.paths.enrolments_dir}")
     print(f"  {meta['privacy']}")
@@ -249,6 +280,7 @@ def build_runtime(cfg: Config, with_asr: bool = True):
             return AsrThread(
                 transcriber, cfg.audio, on_utterance,
                 maxsize=cfg.server.asr_queue_size,
+                asr_cfg=cfg.asr,
             )
 
     return Orchestrator(cfg, cm, spk, cal, trigger_engine, factory), cal
@@ -259,16 +291,22 @@ def cmd_run(args, cfg: Config) -> int:
 
     from sentinel.evidence.log import EvidenceLog
 
-    path = resolve_audio(cfg, args.audio, args.demo)
-    speaker_id = args.speaker or default_speaker(cfg)
+    mic = bool(getattr(args, "mic", False))
     paint = _colour(not args.no_colour)
 
-    manifest = demo_manifest(cfg)
-    ground_truth = None
-    if manifest and args.demo:
-        for call in manifest["calls"]:
-            if call["id"] == args.demo:
-                ground_truth = call["ground_truth"]
+    if mic:
+        speaker_id = args.speaker
+        ground_truth = None
+        path = None
+    else:
+        path = resolve_audio(cfg, args.audio, args.demo)
+        speaker_id = args.speaker or default_speaker(cfg)
+        manifest = demo_manifest(cfg)
+        ground_truth = None
+        if manifest and args.demo:
+            for call in manifest["calls"]:
+                if call["id"] == args.demo:
+                    ground_truth = call["ground_truth"]
 
     store = EnrolmentStore(cfg.paths.enrolments_dir)
     ref = store.get(speaker_id) if speaker_id else None
@@ -280,16 +318,28 @@ def cmd_run(args, cfg: Config) -> int:
     log_path = os.path.join(cfg.paths.evidence_dir, f"run-{stamp}.jsonl")
     orchestrator.evidence = EvidenceLog(log_path)
 
-    source = FileSource(
-        path,
-        sample_rate=cfg.audio.sample_rate,
-        frame_ms=cfg.audio.frame_ms,
-        realtime=not args.fast,
-    )
+    if mic:
+        source = MicSource(
+            sample_rate=cfg.audio.sample_rate,
+            frame_ms=cfg.audio.frame_ms,
+            max_seconds=args.seconds,
+        )
+    else:
+        source = FileSource(
+            path,
+            sample_rate=cfg.audio.sample_rate,
+            frame_ms=cfg.audio.frame_ms,
+            realtime=not args.fast,
+        )
 
     print()
-    print(paint(BOLD, f"  {os.path.basename(path)}  ·  {source.duration_s:.1f}s"))
-    print(paint(DIM, "  Simulated live call — recorded audio streamed in real time."))
+    if mic:
+        print(paint(BOLD, f"  live microphone  ·  up to {args.seconds:.0f}s"))
+        print(paint(DIM, "  Live microphone on this machine — audio is analysed in "
+                         "memory and never written to disk."))
+    else:
+        print(paint(BOLD, f"  {os.path.basename(path)}  ·  {source.duration_s:.1f}s"))
+        print(paint(DIM, "  Simulated live call — recorded audio streamed in real time."))
     print(paint(DIM, f"  calibration {cal.calibration_id} · {cal.dataset} · "
                      f"EER {cal.eer * 100:.1f}% on {cal.n_test_trials} trials"))
     print(paint(DIM, f"  mode={args.mode}  speaker={speaker_id or '-'}  "
@@ -327,6 +377,7 @@ def cmd_run(args, cfg: Config) -> int:
         mode=args.mode,
         ground_truth=ground_truth,
         on_event=on_event,
+        live=mic,
     )
 
     verdict = stats.verdict
@@ -355,6 +406,9 @@ def cmd_run(args, cfg: Config) -> int:
                      f"{stats.triggers} triggers"))
     print(paint(DIM, f"  alerts {stats.alerts}"
                      + (f" · FALSE ALARMS {stats.false_alarms}" if ground_truth == "bonafide" else "")
+                     + (f" · voice lookups {stats.voice_lookups}" if stats.voice_lookups else "")
+                     + (f" · dropped {stats.audio_dropped_ms} ms of live audio"
+                        if stats.audio_dropped_ms else "")
                      + f" · max pipeline lag {stats.max_lag_ms} ms"))
     print(paint(DIM, f"  {stats.wall_s:.1f}s wall clock for {stats.stream_s:.1f}s of audio"))
     print(paint(DIM, f"  evidence: {os.path.relpath(log_path)}"))
@@ -410,6 +464,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_enrol = sub.add_parser("enrol", help="enrol a speaker from an audio clip")
     audio_args(p_enrol)
+    p_enrol.add_argument("--mic", action="store_true",
+                         help="record from the microphone instead of a file")
+    p_enrol.add_argument("--seconds", type=float, default=10.0,
+                         help="microphone recording length (default 10)")
     p_enrol.set_defaults(func=cmd_enrol)
 
     p_list = sub.add_parser("enrolments", help="list enrolled speakers")
@@ -427,6 +485,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_run = sub.add_parser("run", help="run the full pipeline on a call")
     audio_args(p_run)
+    p_run.add_argument("--mic", action="store_true",
+                       help="listen to the microphone instead of a WAV "
+                            "(the headless live path; the browser is the demo path)")
+    p_run.add_argument("--seconds", type=float, default=60.0,
+                       help="microphone session length (default 60)")
     p_run.add_argument("--mode", choices=("triggered", "always_on"), default=None,
                        help="triggered = Sentinel; always_on = the naive design")
     p_run.add_argument("--console", action="store_true",

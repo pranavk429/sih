@@ -29,27 +29,45 @@ connects mid-run is replayed the history first, then joins live.
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import contextlib
 import datetime as dt
 import json
+import logging
 import os
+import re
 import threading
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from sentinel.audio.live_source import LiveSource
 from sentinel.audio.source import FileSource
 from sentinel.config import Config
+from sentinel.enrolment.gallery import Gallery
 from sentinel.enrolment.store import EnrolmentStore
 from sentinel.evidence.log import EvidenceLog
 from sentinel.pipeline.events import EventQueue
+from sentinel.types import Utterance
 
 # How long a WebSocket read blocks a worker thread before looping to check
 # whether the client has gone away. Events arrive by Condition notify, so this
 # is a liveness check, not a poll interval -- it does not add latency.
 _WS_POLL_S = 0.5
+
+# A display name becomes a speaker id. EnrolmentStore enforces its own SAFE_ID
+# pattern; this just makes the common path ("Coordinator's voice") produce a
+# legal id, and the fallback keeps an empty name from erroring.
+_SLUG_STRIP = re.compile(r"[^a-z0-9]+")
+
+
+def _slug(text: str, fallback: str = "voice") -> str:
+    slug = _SLUG_STRIP.sub("-", (text or "").strip().lower()).strip("-")
+    return (slug or fallback)[:48]
 
 
 class RunSession:
@@ -135,6 +153,7 @@ class Runner:
         self.orchestrator = None
         self.calibration = None
         self.session: Optional[RunSession] = None
+        self.live_source: Optional[LiveSource] = None
         self._thread: Optional[threading.Thread] = None
         # Reentrant: start() stops any previous run while already holding it.
         self._lock = threading.RLock()
@@ -181,12 +200,48 @@ class Runner:
             ],
         }
 
+    # -- voices ------------------------------------------------------------
+    def voices(self) -> List[Dict[str, Any]]:
+        """Everything in the enrolment store, for the UI's voices panel."""
+        store = EnrolmentStore(self.cfg.paths.enrolments_dir)
+        out = []
+        for speaker_id in store.list():
+            meta = store.meta(speaker_id) or {}
+            out.append({
+                "speaker_id": speaker_id,
+                "display_name": meta.get("display_name") or speaker_id,
+                "created_utc": meta.get("created_utc"),
+                "duration_s": meta.get("duration_s"),
+                "embedding_dim": meta.get("embedding_dim"),
+                "model_id": meta.get("model_id"),
+            })
+        return out
+
+    def enrol_voice(self, speaker_id: str, display_name: Optional[str],
+                    pcm: np.ndarray, sr: int) -> Dict[str, Any]:
+        """
+        Embed one recording and persist the feature vector.
+
+        Refused mid-run: the pipeline is reading the same encoder, and a demo
+        that enrols a voice underneath a running verdict would make the verdict
+        unattributable.
+        """
+        if self.is_running:
+            raise RuntimeError("stop the run before enrolling a voice")
+        if self.orchestrator is None:
+            raise RuntimeError("models are still loading")
+        store = EnrolmentStore(self.cfg.paths.enrolments_dir)
+        return store.enrol(speaker_id, pcm, sr, self.orchestrator.spk,
+                           display_name=display_name)
+
     def header(self) -> Dict[str, Any]:
         """
         What the UI shows before a run starts.
 
         SPEC §12: the calibration provenance is in the header always, not only
-        once a number exists to sit beside.
+        once a number exists to sit beside. The live and lookup blocks do the
+        same job for the new settings: a threshold on screen is never a mystery
+        number.
         """
         cal = self.calibration
         return {
@@ -200,12 +255,23 @@ class Runner:
             "evidence_risk_floor": self.cfg.decision.evidence_risk_floor,
             "lag_warn_ms": self.cfg.server.lag_warn_ms,
             "default_mode": self.cfg.gating.mode,
+            "live": {
+                "max_session_s": self.cfg.live.max_session_s,
+                "no_audio_warn_ms": self.cfg.live.no_audio_warn_ms,
+            },
+            "lookup": {
+                "accept_similarity": self.cfg.lookup.accept_similarity,
+                "min_margin": self.cfg.lookup.min_margin,
+                "min_consecutive_windows": self.cfg.lookup.min_consecutive_windows,
+            },
+            "voices": self.voices(),
             "demos": self.demos(),
             "honesty": "Simulated live call — recorded audio streamed in real time.",
         }
 
     def state(self) -> Dict[str, Any]:
         session = self.session
+        live = self.live_source
         return {
             "running": self.is_running,
             "run_id": session.run_id if session else None,
@@ -213,6 +279,8 @@ class Runner:
             "finished": session.finished if session else None,
             "events": len(session.history) if session else 0,
             "dropped": session.dropped if session else 0,
+            "live": live is not None,
+            "audio_dropped_ms": live.dropped_ms if live is not None else 0,
         }
 
     @property
@@ -266,52 +334,103 @@ class Runner:
                 frame_ms=self.cfg.audio.frame_ms,
                 realtime=not fast,
             )
-
-            self._n += 1
-            stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-            run_id = f"{stamp}-{self._n:03d}"
-            log_path = os.path.join(self.cfg.paths.evidence_dir, f"run-{run_id}.jsonl")
-            self.orchestrator.evidence = EvidenceLog(log_path)
-
-            meta = {
-                "run_id": run_id,
-                "demo": demo,
-                "title": title,
-                "file": os.path.basename(path),
-                "duration_s": round(source.duration_s, 2),
-                "ground_truth": ground_truth,
-                "mode": mode or self.cfg.gating.mode,
-                "fast": fast,
-                "speaker_id": speaker_id,
-                "enrolled": reference is not None,
-                "evidence_log": os.path.relpath(log_path, start=self.cfg.paths.evidence_dir),
-                "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-            }
-            session = RunSession(run_id, meta, self.cfg.server.event_queue_size)
-            session.publish({"type": "run_meta", **meta})
-            self.session = session
-
-            def worker() -> None:
-                try:
-                    self.orchestrator.run(
-                        source,
-                        reference_embedding=reference,
-                        speaker_id=speaker_id,
-                        mode=mode,
-                        ground_truth=ground_truth,
-                        on_event=session.publish,
-                    )
-                    session.close()
-                except Exception as exc:  # noqa: BLE001 -- a crash must reach the screen
-                    session.close(error=f"{type(exc).__name__}: {exc}")
-                finally:
-                    source.close()
-
-            self._thread = threading.Thread(
-                target=worker, name=f"sentinel-run-{run_id}", daemon=True
+            return self._launch(
+                source, demo=demo, title=title, ground_truth=ground_truth,
+                mode=mode, fast=fast, speaker_id=speaker_id, reference=reference,
+                live=False, duration_s=round(source.duration_s, 2),
             )
-            self._thread.start()
-            return meta
+
+    def start_live(self, mode: Optional[str] = None,
+                   speaker_id: Optional[str] = None) -> Tuple[Dict[str, Any], LiveSource]:
+        """
+        Begin a call fed by the browser microphone.
+
+        Returns the run meta AND the LiveSource, because the WebSocket handler
+        that asked for the run is also the thing that pushes audio into it. The
+        pipeline starts immediately and blocks on the source's queue: no audio
+        has to exist yet, so there is no ordering race between "start the run"
+        and "open the microphone".
+        """
+        if self.orchestrator is None:
+            raise RuntimeError("models are still loading")
+
+        with self._lock:
+            self.stop(join=True)
+
+            reference = None
+            if speaker_id:
+                reference = EnrolmentStore(self.cfg.paths.enrolments_dir).get(speaker_id)
+
+            source = LiveSource(
+                sample_rate=self.cfg.audio.sample_rate,
+                frame_ms=self.cfg.audio.frame_ms,
+                max_queue_frames=self.cfg.live.queue_frames,
+                max_seconds=self.cfg.live.max_session_s,
+            )
+            self.live_source = source
+            meta = self._launch(
+                source, demo=None, title="Live microphone", ground_truth=None,
+                mode=mode, fast=False, speaker_id=speaker_id, reference=reference,
+                live=True, duration_s=None,
+            )
+            return meta, source
+
+    def _launch(self, source, *, demo, title, ground_truth, mode, fast,
+                speaker_id, reference, live, duration_s) -> Dict[str, Any]:
+        """The tail start()/start_live() share: log, session, worker thread."""
+        gallery = Gallery.load(
+            EnrolmentStore(self.cfg.paths.enrolments_dir), self.cfg.lookup
+        )
+
+        self._n += 1
+        stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        run_id = f"{stamp}-{self._n:03d}"
+        log_path = os.path.join(self.cfg.paths.evidence_dir, f"run-{run_id}.jsonl")
+        self.orchestrator.evidence = EvidenceLog(log_path)
+
+        meta = {
+            "run_id": run_id,
+            "demo": demo,
+            "title": title,
+            "file": None if live else os.path.basename(getattr(source, "path", "")),
+            "duration_s": duration_s,
+            "ground_truth": ground_truth,
+            "mode": mode or self.cfg.gating.mode,
+            "fast": fast,
+            "live": bool(live),
+            "speaker_id": speaker_id,
+            "enrolled": reference is not None,
+            "gallery_size": len(gallery),
+            "evidence_log": os.path.relpath(log_path, start=self.cfg.paths.evidence_dir),
+            "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        }
+        session = RunSession(run_id, meta, self.cfg.server.event_queue_size)
+        session.publish({"type": "run_meta", **meta})
+        self.session = session
+
+        def worker() -> None:
+            try:
+                self.orchestrator.run(
+                    source,
+                    reference_embedding=reference,
+                    speaker_id=speaker_id,
+                    mode=mode,
+                    ground_truth=ground_truth,
+                    on_event=session.publish,
+                    live=live,
+                    gallery=gallery if len(gallery) else None,
+                )
+                session.close()
+            except Exception as exc:  # noqa: BLE001 -- a crash must reach the screen
+                session.close(error=f"{type(exc).__name__}: {exc}")
+            finally:
+                source.close()
+
+        self._thread = threading.Thread(
+            target=worker, name=f"sentinel-run-{run_id}", daemon=True
+        )
+        self._thread.start()
+        return meta
 
     def stop(self, join: bool = True, timeout: float = 15.0) -> bool:
         """
@@ -321,12 +440,19 @@ class Runner:
         returns quickly. Joining matters: a thread still holding the models
         while the next run starts on them is the kind of bug that only shows up
         on stage.
+
+        A live run may be blocked waiting for a chunk that will never arrive
+        (the browser stopped sending). Closing the LiveSource makes frames()
+        finish, which is what actually unblocks the loop -- the stop flag is
+        only checked between frames.
         """
         with self._lock:
             if self.orchestrator is None:
                 return False
             was_running = self.is_running
             self.orchestrator.stop()
+            if self.live_source is not None:
+                self.live_source.close()
             if join and self._thread is not None:
                 self._thread.join(timeout=timeout)
                 if self._thread.is_alive():
@@ -411,6 +537,195 @@ def create_app(cfg: Optional[Config] = None, with_asr: bool = True,
             None, lambda: runner.stop(join=True)
         )
         return {"stopped": was_running}
+
+    # -- voices: live enrolment and lookup ----------------------------------
+    @app.get("/voices")
+    def voices() -> Dict[str, Any]:
+        """Every enrolled voice. Feature vectors only -- see EnrolmentStore."""
+        return {"voices": runner.voices()}
+
+    @app.post("/voices")
+    async def enrol_voice(payload: Optional[Dict[str, Any]] = Body(default=None)):
+        """
+        Enrol from a browser recording.
+
+        The body is `pcm_int16_b64`: base64 of raw little-endian int16 mono at
+        `sample_rate`. Int16 halves the payload against float32 and loses
+        nothing that matters for an embedding -- the recording is speech aimed
+        at a voice encoder, not a master.
+
+        Nothing is written to disk except the 256-float vector and its metadata
+        (SPEC §7.5). The PCM exists in this function's local variables and is
+        dropped when it returns.
+        """
+        payload = payload or {}
+        display_name = str(payload.get("display_name") or "").strip()[:64]
+        encoded = payload.get("pcm_int16_b64")
+        try:
+            sample_rate = int(payload.get("sample_rate") or 0)
+        except (TypeError, ValueError):
+            sample_rate = 0
+
+        if not display_name:
+            return JSONResponse({"error": "display_name is required"}, status_code=400)
+        if not encoded:
+            return JSONResponse({"error": "pcm_int16_b64 is required"}, status_code=400)
+        if not (8000 <= sample_rate <= 96000):
+            return JSONResponse(
+                {"error": f"sample_rate {sample_rate} is outside 8000-96000"},
+                status_code=400,
+            )
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError):
+            return JSONResponse({"error": "pcm_int16_b64 is not valid base64"},
+                                status_code=400)
+        if len(raw) % 2:
+            return JSONResponse({"error": "pcm_int16_b64 has an odd byte count"},
+                                status_code=400)
+
+        pcm = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+        seconds = len(pcm) / float(sample_rate)
+        if seconds < 1.0:
+            return JSONResponse(
+                {"error": f"recording is {seconds:.1f}s; at least 1s is needed"},
+                status_code=400,
+            )
+        if seconds > 30.0:
+            return JSONResponse(
+                {"error": f"recording is {seconds:.1f}s; 30s is the maximum"},
+                status_code=400,
+            )
+
+        speaker_id = _slug(str(payload.get("speaker_id") or display_name))
+        try:
+            meta = await asyncio.get_running_loop().run_in_executor(
+                None,
+                lambda: runner.enrol_voice(speaker_id, display_name, pcm, sample_rate),
+            )
+        except RuntimeError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=409)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return {"enrolled": True, "meta": meta, "voices": runner.voices()}
+
+    @app.delete("/voices/{speaker_id}")
+    async def remove_voice(speaker_id: str):
+        if runner.is_running:
+            return JSONResponse({"error": "stop the run before changing voices"},
+                                status_code=409)
+        store = EnrolmentStore(cfg.paths.enrolments_dir)
+        try:
+            removed = store.remove(speaker_id)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return {"removed": removed, "voices": runner.voices()}
+
+    # -- try a line: the trigger engine without audio ------------------------
+    @app.post("/assess")
+    async def assess(payload: Optional[Dict[str, Any]] = Body(default=None)):
+        """
+        Score a typed sentence with the trigger engine.
+
+        This is the SAME `assess()` the pipeline calls on every transcribed
+        utterance, so the box cannot disagree with the audio path. It is text
+        in, and the response says so -- nothing here makes a claim about a
+        voice.
+        """
+        payload = payload or {}
+        text = str(payload.get("text") or "").strip()[:500]
+        if not text:
+            return JSONResponse({"error": "text is required"}, status_code=400)
+        if runner.orchestrator is None:
+            return JSONResponse({"error": "models are still loading"}, status_code=409)
+        assessment, _event = runner.orchestrator.trigger_engine.assess(
+            Utterance(text=text, t_start_ms=0, t_end_ms=0)
+        )
+        return {
+            "text": text,
+            "would_fire": bool(assessment.fired),
+            "assessment": assessment.to_json(),
+            "audio": False,
+        }
+
+    # -- the live microphone socket -----------------------------------------
+    @app.websocket("/live/audio")
+    async def live_audio(websocket: WebSocket) -> None:
+        """
+        Browser microphone in, events out over /stream.
+
+        Protocol, in order:
+            -> {"type": "start", "mode": "...", "speaker": "id", "sample_rate": 48000}
+            <- {"type": "live_ready", "meta": {...}, "sample_rate": 48000}
+            -> binary Float32 mono chunks (20 ms each, as captured)
+            -> {"type": "stop"}            (optional; disconnect also ends it)
+            <- {"type": "live_stopped"}
+
+        The socket carries audio only. Run events keep flowing over /stream, so
+        a second tab still sees everything and the UI has exactly one event
+        path, live or recorded.
+        """
+        await websocket.accept()
+        loop = asyncio.get_running_loop()
+        source: Optional[LiveSource] = None
+        sample_rate = 16000
+
+        try:
+            while True:
+                message = await websocket.receive()
+                if message.get("type") == "websocket.disconnect":
+                    break
+
+                data = message.get("bytes")
+                if data:
+                    if source is not None:
+                        source.push(np.frombuffer(data, dtype="<f4"), sample_rate)
+                    continue
+
+                text = message.get("text")
+                if not text:
+                    continue
+                payload = json.loads(text)
+                kind = payload.get("type")
+
+                if kind == "start":
+                    try:
+                        requested = int(payload.get("sample_rate") or 16000)
+                    except (TypeError, ValueError):
+                        requested = 16000
+                    sample_rate = requested if 8000 <= requested <= 96000 else 16000
+                    meta, source = await loop.run_in_executor(
+                        None,
+                        lambda: runner.start_live(
+                            mode=payload.get("mode"),
+                            speaker_id=payload.get("speaker"),
+                        ),
+                    )
+                    await websocket.send_text(json.dumps({
+                        "type": "live_ready",
+                        "meta": meta,
+                        "sample_rate": sample_rate,
+                    }))
+                elif kind == "stop":
+                    if source is not None:
+                        source.close()
+                    await websocket.send_text(json.dumps({"type": "live_stopped"}))
+                    break
+        except WebSocketDisconnect:
+            pass
+        except ValueError as exc:
+            with contextlib.suppress(Exception):
+                await websocket.send_text(json.dumps({
+                    "type": "live_error", "message": str(exc),
+                }))
+        except Exception:  # noqa: BLE001 -- a socket handler must not die silently
+            logging.getLogger("sentinel.live").exception(
+                "live audio handler failed; the run will be stopped"
+            )
+        finally:
+            # A client that vanishes must not leave a run holding the models.
+            if source is not None:
+                source.close()
 
     @app.websocket("/stream")
     async def stream(websocket: WebSocket) -> None:

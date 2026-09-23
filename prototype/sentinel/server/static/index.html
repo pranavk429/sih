@@ -60,20 +60,46 @@
       <span class="nm">sentinel<sup>demo</sup></span>
     </div>
 
-    <!-- The pipeline is the navigation: each stage carries its live count. -->
+    <!-- The pipeline is the navigation: each stage carries its live count, and
+         clicking one goes to the panel holding that stage's evidence. Buttons,
+         not divs, so the keyboard reaches them too. -->
     <div class="block">
       <div class="rail-lbl">pipeline</div>
       <div class="steps">
-        <div class="step" id="step-trigger"><svg><use href="#i-bolt"/></svg> Trigger <span class="ct" id="ct-trigger">0</span></div>
-        <div class="step" id="step-verify"><svg><use href="#i-shield"/></svg> Verify <span class="ct" id="ct-verify">0</span></div>
-        <div class="step" id="step-challenge"><svg><use href="#i-key"/></svg> Challenge <span class="ct" id="ct-challenge">0</span></div>
-        <div class="step" id="step-evidence"><svg><use href="#i-list"/></svg> Evidence <span class="ct" id="ct-evidence">0</span></div>
+        <button type="button" class="step" id="step-trigger" data-panel="timeline-panel" aria-controls="timeline-panel"><svg><use href="#i-bolt"/></svg> Trigger <span class="ct" id="ct-trigger">0</span></button>
+        <button type="button" class="step" id="step-verify" data-panel="verdict-panel" aria-controls="verdict-panel"><svg><use href="#i-shield"/></svg> Verify <span class="ct" id="ct-verify">0</span></button>
+        <button type="button" class="step" id="step-challenge" data-panel="challenge-panel" aria-controls="challenge-panel"><svg><use href="#i-key"/></svg> Challenge <span class="ct" id="ct-challenge">0</span></button>
+        <button type="button" class="step" id="step-evidence" data-panel="evidence-panel" aria-controls="evidence-panel"><svg><use href="#i-list"/></svg> Evidence <span class="ct" id="ct-evidence">0</span></button>
       </div>
     </div>
 
     <div class="block">
-      <div class="rail-lbl">call</div>
-      <div class="select-wrap"><select id="demo"></select></div>
+      <!-- Where the audio comes from. Recorded is the safe demo; live is the
+           point of this sprint: a person talks and the system reacts. -->
+      <div class="rail-lbl">audio source</div>
+      <div class="modes" role="radiogroup" aria-label="Audio source">
+        <button class="mode" id="src-file" data-source="file" role="radio" aria-checked="true">
+          <b>Recorded</b><span>a demo call, streamed</span>
+        </button>
+        <button class="mode" id="src-live" data-source="live" role="radio" aria-checked="false">
+          <b>Live mic</b><span>talk to it, right now</span>
+        </button>
+      </div>
+
+      <div id="file-controls">
+        <div class="rail-lbl" style="margin-top:14px">call</div>
+        <div class="select-wrap"><select id="demo"></select></div>
+      </div>
+
+      <div id="live-controls" hidden>
+        <div class="rail-lbl" style="margin-top:14px">check the voice against</div>
+        <div class="select-wrap"><select id="speaker"></select></div>
+        <div class="mic-row" aria-hidden="true">
+          <span class="mic-dot" id="mic-dot"></span>
+          <span class="mic-bar"><i id="mic-level"></i></span>
+          <span class="mic-note" id="mic-note">idle</span>
+        </div>
+      </div>
 
       <!-- The mode toggle. This is the argument the demo exists to make. -->
       <div class="rail-lbl" style="margin-top:14px">detection mode</div>
@@ -86,7 +112,7 @@
         </button>
       </div>
 
-      <label class="toggle" for="fast">
+      <label class="toggle" for="fast" id="fast-wrap">
         <input type="checkbox" id="fast"><span class="sw"></span> Fast replay (rehearsal)
       </label>
 
@@ -95,6 +121,39 @@
         <button class="btn btn-stop" id="stop" disabled aria-label="Stop"><svg><use href="#i-stop"/></svg></button>
       </div>
     </div>
+
+    <!-- ── voices: enrol live, and see who the system hears ------------- -->
+    <div class="block">
+      <div class="rail-lbl">voices</div>
+      <div class="voices" id="voice-list"></div>
+      <div class="voice-actions">
+        <button class="btn btn-thin" id="voice-record">Record 10s voice</button>
+        <span class="voice-status" id="voice-status"></span>
+      </div>
+      <p class="tiny">Stores a 256-number voice fingerprint. The recording itself is
+        never written to disk.</p>
+    </div>
+
+    <!-- ── try a line: the same trigger engine, text in ------------------ -->
+    <div class="block">
+      <div class="rail-lbl">try a line</div>
+      <input class="line-input" id="assess-text" type="text" maxlength="200"
+             placeholder="type what a caller might say…">
+      <div class="voice-actions">
+        <button class="btn btn-thin" id="assess-go">Score it</button>
+        <span class="voice-status" id="assess-note">text only — no audio claim</span>
+      </div>
+      <div class="assess-out" id="assess-out" hidden></div>
+    </div>
+
+    <!-- Suggested lines for the presenter. Nothing here is injected into the
+         transcript; the system's response to them is entirely real. -->
+    <details class="block prompts" id="prompts">
+      <summary class="rail-lbl">suggested lines (live demo)</summary>
+      <p class="tiny">Say these out loud, or click one to score it as text. The
+        system's reaction is not scripted.</p>
+      <div id="prompt-groups"></div>
+    </details>
 
     <!-- SPEC §12: abstaining is an outcome, not a failure. Say so permanently. -->
     <div class="block">
@@ -108,9 +167,9 @@
 
     <div class="rail-foot">
       <!-- Not dismissible, not subtle, and never scrolled off the screen. -->
-      <div class="honesty">
-        <div class="h"><span class="dot"></span>Simulated live call</div>
-        <p>Recorded audio streamed in real time. This is not a live phone line, and nothing here dials out.</p>
+      <div class="honesty" id="honesty">
+        <div class="h"><span class="dot"></span><span id="honesty-title">Simulated live call</span></div>
+        <p id="honesty-body">Recorded audio streamed in real time. This is not a live phone line, and nothing here dials out.</p>
       </div>
       <div class="prov">
         <div><b>dataset</b><span id="prov-dataset">—</span></div>
@@ -134,6 +193,7 @@
       <div class="sp"></div>
 
       <span class="chip" id="chip-conn" data-state="off">disconnected</span>
+      <span class="chip mono" id="chip-lookup" hidden>lookup —</span>
       <span class="chip mono" id="chip-lag" hidden>lag —</span>
       <span class="chip mono" id="chip-clock">—</span>
 
@@ -142,10 +202,22 @@
         <svg class="ic-moon"><use href="#i-moon"/></svg>
       </button>
 
-      <!-- Panel 6: the counter that wins the argument. -->
+      <!-- Panel 6: the counter that wins the argument. One reading until both
+           modes have run the same call; after that it becomes the comparison,
+           because the claim IS a comparison and it should not have to live in
+           the judge's memory across two separate runs. -->
       <div class="alerts" id="falsealarm" data-state="idle">
-        <span class="n" id="fa-count">0</span>
-        <span class="fa-label">false alarms<br><small id="fa-note">pick a call</small></span>
+        <span class="fa-single" id="fa-single">
+          <span class="n" id="fa-count">0</span>
+          <span class="fa-label" id="fa-label">false alarms<br><small id="fa-note">pick a call</small></span>
+        </span>
+        <span class="fa-compare" id="fa-compare" hidden>
+          <span class="cmp" id="cmp-always_on"><b>—</b><i>naive</i></span>
+          <span class="cmp" id="cmp-triggered"><b>—</b><i>sentinel</i></span>
+          <span class="fa-label">
+            <span id="cmp-title">false alarms</span><br><small id="cmp-note"></small>
+          </span>
+        </span>
       </div>
     </div>
 
@@ -233,7 +305,7 @@
         </div>
       </div>
 
-      <div class="card ev">
+      <div class="card ev" id="evidence-panel">
         <div class="ch">
           <span class="ic"><svg><use href="#i-list"/></svg></span>
           <div><h2>Evidence</h2><div class="sub" id="evidence-sub"></div></div>
@@ -262,7 +334,7 @@
         <div class="chal-prompt" id="challenge-prompt"></div>
       </div>
 
-      <div class="card dark">
+      <div class="card dark" id="timeline-panel">
         <div class="tl-head">
           <div class="tl-stat">
             <span class="bar" style="background:var(--lime)"></span>
@@ -301,6 +373,7 @@
   </main>
 </div>
 
+<script src="/static/live.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,113 @@
+{
+  "created_utc": "2026-09-23T13:19:07+00:00",
+  "calibration_id": "b58d49e2c947",
+  "band": [
+    0.3636,
+    0.4575
+  ],
+  "evidence_risk_floor": 0.4575,
+  "enrolled_reference": true,
+  "method": "the live pipeline's own framing, VAD, probe CM and speaker check; fused = mean of the usable signals per window",
+  "assets": [
+    {
+      "id": "say-daniel",
+      "file": "say-daniel.wav",
+      "ground_truth": "synthetic_tts",
+      "generator": "macOS say",
+      "generator_detail": "system TTS voice 'Daniel'",
+      "source_speaker": null,
+      "consent": "not applicable -- a system voice, not a person",
+      "measured": {
+        "windows": 17,
+        "mean_fused": 0.5716,
+        "max_fused": 0.5924,
+        "mean_cm": 0.9434,
+        "mean_speaker": 0.1999,
+        "fraction_above_floor": 1.0,
+        "caught": true
+      },
+      "verdict": "CAUGHT (above the band)"
+    },
+    {
+      "id": "say-karen",
+      "file": "say-karen.wav",
+      "ground_truth": "synthetic_tts",
+      "generator": "macOS say",
+      "generator_detail": "system TTS voice 'Karen'",
+      "source_speaker": null,
+      "consent": "not applicable -- a system voice, not a person",
+      "measured": {
+        "windows": 16,
+        "mean_fused": 0.5135,
+        "max_fused": 0.529,
+        "mean_cm": 0.8785,
+        "mean_speaker": 0.1485,
+        "fraction_above_floor": 1.0,
+        "caught": true
+      },
+      "verdict": "CAUGHT (above the band)"
+    },
+    {
+      "id": "say-samantha",
+      "file": "say-samantha.wav",
+      "ground_truth": "synthetic_tts",
+      "generator": "macOS say",
+      "generator_detail": "system TTS voice 'Samantha'",
+      "source_speaker": null,
+      "consent": "not applicable -- a system voice, not a person",
+      "measured": {
+        "windows": 16,
+        "mean_fused": 0.5287,
+        "max_fused": 0.5539,
+        "mean_cm": 0.8971,
+        "mean_speaker": 0.1603,
+        "fraction_above_floor": 1.0,
+        "caught": true
+      },
+      "verdict": "CAUGHT (above the band)"
+    },
+    {
+      "id": "genuine",
+      "file": "genuine.wav",
+      "ground_truth": "bonafide",
+      "generator": "ASVspoof2019-LA",
+      "generator_detail": "dataset mobile_voip",
+      "source_speaker": null,
+      "consent": null,
+      "measured": {
+        "windows": 47,
+        "mean_fused": 0.3269,
+        "max_fused": 0.519,
+        "mean_cm": 0.5144,
+        "mean_speaker": 0.1394,
+        "fraction_above_floor": 0.149,
+        "caught": false
+      },
+      "verdict": "BELOW the band \u2014 not caught by this pipeline"
+    },
+    {
+      "id": "attack",
+      "file": "attack.wav",
+      "ground_truth": "spoof_dataset",
+      "generator": "ASVspoof2019-LA",
+      "generator_detail": "dataset mobile_voip",
+      "source_speaker": null,
+      "consent": null,
+      "measured": {
+        "windows": 68,
+        "mean_fused": 0.4801,
+        "max_fused": 0.5823,
+        "mean_cm": 0.7996,
+        "mean_speaker": 0.1606,
+        "fraction_above_floor": 0.618,
+        "caught": true
+      },
+      "verdict": "CAUGHT (above the band)"
+    }
+  ],
+  "caveats": [
+    "Mean fused risk per file, not a per-window decision. The pipeline's verdict also depends on a trigger and gating.",
+    "A file below the band is a MISS for this calibration. Say so; do not demo it as caught.",
+    "Speaker risk barely separates a voice conversion aimed at the enrolled speaker; the countermeasure is the signal doing the work."
+  ]
+}

@@ -39,7 +39,24 @@ const state = {
   clockMs: 0,
   running: false,
   error: null,
+  // --- the live path (PLAN-LIVE.md F1/F2/F3) ---
+  source: 'file',           // 'file' | 'live'
+  live: false,              // the run on screen came from the microphone
+  liveCfg: null,            // hello.live
+  lookupCfg: null,          // hello.lookup (the threshold on screen)
+  voices: [],               // enrolled voices, from /voices
+  speaker: '',              // voice the live run is checked against
+  lookups: [],              // voice_lookup events
+  liveUi: { recording: false, level: 0, silent: false, note: 'idle' },
+  assess: null,             // last try-a-line result
 };
+
+// Finished runs, keyed by call AND mode, so the two modes can be put beside
+// each other. Only what this browser session actually measured -- nothing is
+// restored from a previous page load, so every number on screen is one the
+// person watching saw happen. Comparing across two different calls would not
+// be a comparison of anything, hence the call in the key.
+const runsSeen = {};
 
 let dirty = true;
 const touch = () => { dirty = true; };
@@ -71,11 +88,18 @@ function resetRun(meta) {
   state.falseAlarms = 0;
   state.clockMs = 0;
   state.error = null;
+  state.lookups = [];
+  state.gallery = null;
   state.running = true;
   if (meta) {
     state.mode = meta.mode;
     state.groundTruth = meta.ground_truth;
     state.durationS = meta.duration_s || 0;
+    state.live = Boolean(meta.live);
+    // The source toggle follows the run: a live run must not leave the UI
+    // showing the recorded-call controls, and vice versa.
+    state.source = state.live ? 'live' : 'file';
+    if (state.live && meta.speaker_id) state.speaker = meta.speaker_id;
   }
   touch();
 }
@@ -84,6 +108,10 @@ function apply(event) {
   switch (event.type) {
     case 'hello':
       state.hello = event;
+      state.liveCfg = event.live || null;
+      state.lookupCfg = event.lookup || null;
+      state.voices = event.voices || [];
+      if (!state.speaker && state.voices.length) state.speaker = state.voices[0].speaker_id;
       if (!modeManuallySet && event.default_mode) {
         selectedMode = event.default_mode;
         state.mode = event.default_mode;
@@ -98,7 +126,17 @@ function apply(event) {
       state.runStart = event;
       state.mode = event.mode;
       state.groundTruth = event.ground_truth;
+      state.live = Boolean(event.live);
+      state.gallery = event.gallery || null;
       if (event.duration_s) state.durationS = event.duration_s;
+      break;
+
+    case 'voice_lookup':
+      // Open-set identification against the enrolment gallery. Kept separate
+      // from the verdict because it is a separate signal; the UI shows it as
+      // one, threshold included.
+      state.lookups.push(event);
+      if (state.lookups.length > 600) state.lookups.shift();
       break;
 
     case 'utterance':
@@ -140,6 +178,14 @@ function apply(event) {
       if (event.stats) {
         state.alerts = event.stats.alerts;
         state.falseAlarms = event.stats.false_alarms;
+        // Recorded on `final` only: a run that crashed or was stopped never
+        // becomes half of a comparison.
+        if (state.meta && state.meta.demo) {
+          runsSeen[`${state.meta.demo}|${state.meta.mode}`] = {
+            alerts: event.stats.alerts,
+            falseAlarms: event.stats.false_alarms,
+          };
+        }
       }
       break;
 
@@ -214,8 +260,13 @@ function renderHeader() {
 
   const clock = $('chip-clock');
   if (state.meta) {
-    const tag = state.meta.fast ? ' · fast replay' : '';
-    text(clock, `${secs(state.clockMs)} / ${state.durationS.toFixed(1)}s${tag}`);
+    if (state.live) {
+      // A live run has no known duration; the clock counts up and says so.
+      text(clock, `${secs(state.clockMs)} · live${state.running ? '' : ' · ended'}`);
+    } else {
+      const tag = state.meta.fast ? ' · fast replay' : '';
+      text(clock, `${secs(state.clockMs)} / ${state.durationS.toFixed(1)}s${tag}`);
+    }
   } else {
     text(clock, 'no call loaded');
   }
@@ -223,7 +274,15 @@ function renderHeader() {
   // Who the call is being checked against. The enrolment is the whole premise,
   // so a call running against a speaker with no reference has to say so.
   const m = state.meta;
-  if (m && m.speaker_id) {
+  if (m && m.live) {
+    const voice = state.voices.find((v) => v.speaker_id === m.speaker_id);
+    text($('who-name'), 'Live microphone');
+    text($('who-sub'), voice
+      ? `checking the voice against ${voice.display_name}`
+      : (state.voices.length
+        ? 'no reference voice selected — lookup only'
+        : 'no voices enrolled — nothing to compare the voice against'));
+  } else if (m && m.speaker_id) {
     text($('who-name'), `Speaker ${m.speaker_id}`);
     text($('who-sub'), m.enrolled === false
       ? 'NOT ENROLLED — no reference voice to compare against'
@@ -237,7 +296,22 @@ function renderHeader() {
 function renderControls() {
   $('run').disabled = state.running;
   $('stop').disabled = !state.running;
-  text($('run-label'), state.running ? 'Running…' : 'Run call');
+  // The label names what the button actually does for the chosen source. A
+  // live run is not "running a call"; it is listening, and saying so matters.
+  text($('run-label'), state.running
+    ? (state.source === 'live' ? 'Listening…' : 'Running…')
+    : (state.source === 'live' ? 'Start listening' : 'Run call'));
+
+  for (const source of ['file', 'live']) {
+    $(`src-${source}`).setAttribute('aria-checked', String(state.source === source));
+  }
+  show($('file-controls'), state.source === 'file');
+  show($('live-controls'), state.source === 'live');
+  show($('fast-wrap'), state.source === 'file');
+  show($('prompts'), state.source === 'live');
+  $('demo').disabled = state.source === 'live';
+  renderSpeakerSelect();
+  renderMic();
 
   for (const mode of ['triggered', 'always_on']) {
     $(`mode-${mode}`).setAttribute('aria-checked', String(state.mode === mode));
@@ -250,9 +324,34 @@ function renderControls() {
   const box = $('falsealarm');
   const genuine = state.groundTruth === 'bonafide';
   const count = genuine ? state.falseAlarms : state.alerts;
+
+  // The mode of the run on screen -- taken from the run's own metadata, not from
+  // `state.mode`, which follows the toggle and can be moved after a run has
+  // finished. Reading the toggle here would file a naive result under Sentinel.
+  const demo = state.meta && state.meta.demo;
+  const runMode = state.meta && state.meta.mode;
+
+  const readingFor = (mode) => {
+    if (!demo) return null;
+    if (mode === runMode) return count;          // live, or just finished
+    const seen = runsSeen[`${demo}|${mode}`];
+    return seen ? (genuine ? seen.falseAlarms : seen.alerts) : null;
+  };
+  const naive = readingFor('always_on');
+  const sentinel = readingFor('triggered');
+  const comparing = naive !== null && sentinel !== null;
+
+  show($('fa-single'), !comparing);
+  show($('fa-compare'), comparing);
+
+  if (comparing) {
+    renderCompare(box, genuine, runMode, naive, sentinel);
+    return;
+  }
+
   text($('fa-count'), String(count));
 
-  const label = box.querySelector('.fa-label');
+  const label = $('fa-label');
   const note = $('fa-note');
   if (!state.meta) {
     box.dataset.state = 'idle';
@@ -271,6 +370,264 @@ function renderControls() {
   }
 }
 
+// Both modes on the same call, side by side. The side matching the run on
+// screen is marked, so a number that is still climbing is never mistaken for a
+// finished one.
+function renderCompare(box, genuine, runMode, naive, sentinel) {
+  // Fewer is better on a genuine call, more is better on an attack. One rule,
+  // written once, so neither mode is flattered by the colour it happens to get.
+  const good = (v) => genuine ? v === 0 : v > 0;
+
+  for (const [mode, value] of [['always_on', naive], ['triggered', sentinel]]) {
+    const side = $(`cmp-${mode}`);
+    text(side.querySelector('b'), String(value));
+    side.classList.toggle('ok', good(value));
+    side.classList.toggle('bad', !good(value));
+    side.classList.toggle('live', mode === runMode);
+  }
+
+  text($('cmp-title'), genuine ? 'false alarms' : 'alerts');
+  text($('cmp-note'), genuine
+    ? 'same call, same models — only the gating differs'
+    : (good(naive) && good(sentinel)
+        ? 'ground truth: spoof — both modes caught it'
+        : 'ground truth: spoof — these are true positives'));
+
+  // Neutral background: with one good number and one bad one, colouring the
+  // whole panel either way would take a side the panel has not earned.
+  box.dataset.state = 'compare';
+}
+
+// ---------------------------------------------------------------- live UI
+// The speaker picker for live runs: which enrolled voice the call is checked
+// against. "No reference" is a legitimate choice -- the lookup still runs, and
+// the verdict honestly says it has nothing to compare against.
+function renderSpeakerSelect() {
+  const select = $('speaker');
+  const signature = state.voices.map((v) => v.speaker_id).join('|');
+  if (select.dataset.signature !== signature) {
+    select.dataset.signature = signature;
+    select.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = 'No reference — lookup only';
+    select.appendChild(none);
+    for (const voice of state.voices) {
+      const option = document.createElement('option');
+      option.value = voice.speaker_id;
+      option.textContent = `${voice.display_name} (${Number(voice.duration_s || 0).toFixed(1)}s)`;
+      select.appendChild(option);
+    }
+  }
+  if (state.voices.some((v) => v.speaker_id === state.speaker)) select.value = state.speaker;
+  else if (!state.speaker) select.value = '';
+}
+
+function renderMic() {
+  const live = state.source === 'live';
+  const level = live ? state.liveUi.level : 0;
+  // A bar, never a number: this answers "is sound arriving", and it is not a
+  // measurement the system uses for anything.
+  $('mic-level').style.width = (clamp(level * 6, 0, 1) * 100).toFixed(0) + '%';
+  const dot = $('mic-dot');
+  dot.dataset.state = state.liveUi.recording ? 'rec'
+    : (live ? (state.liveUi.silent ? 'silent' : 'on') : 'off');
+  text($('mic-note'), state.liveUi.recording ? 'recording…'
+    : state.liveUi.silent ? 'no audio'
+    : (state.running && live ? 'listening' : (live ? 'ready' : 'idle')));
+}
+
+function renderVoices() {
+  const box = $('voice-list');
+  const signature = state.voices.map((v) => `${v.speaker_id}:${v.display_name}`).join('|');
+  if (box.dataset.signature !== signature) {
+    box.dataset.signature = signature;
+    box.innerHTML = '';
+    if (!state.voices.length) {
+      const p = document.createElement('p');
+      p.className = 'tiny';
+      p.textContent = 'No voices enrolled yet. Record one to give the system something to compare against.';
+      box.appendChild(p);
+    }
+    for (const voice of state.voices) {
+      const row = document.createElement('div');
+      row.className = 'voice';
+      const name = document.createElement('b');
+      name.textContent = voice.display_name;
+      const meta = document.createElement('span');
+      meta.className = 'vmeta';
+      meta.textContent = `${voice.speaker_id} · ${Number(voice.duration_s || 0).toFixed(1)}s`;
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'vdel';
+      del.title = 'Delete this voice fingerprint';
+      del.setAttribute('aria-label', `Delete ${voice.display_name}`);
+      del.textContent = '×';
+      del.onclick = () => deleteVoice(voice.speaker_id);
+      row.append(name, meta, del);
+      box.appendChild(row);
+    }
+  }
+  $('voice-record').disabled = state.running || state.liveUi.recording;
+}
+
+// The lookup chip: who the system is hearing, with the threshold it used. A
+// name is only shown once the tracker has confirmed it across windows.
+function renderLookup() {
+  const chip = $('chip-lookup');
+  const last = state.lookups.length ? state.lookups[state.lookups.length - 1] : null;
+  if (!last) {
+    chip.hidden = !(state.running && state.live);
+    if (!chip.hidden) text(chip, 'lookup —');
+    return;
+  }
+  chip.hidden = false;
+  const match = last.match;
+  if (!match || !match.best) {
+    chip.dataset.state = 'idle';
+    text(chip, 'lookup: no voice');
+    return;
+  }
+  const threshold = state.lookupCfg ? state.lookupCfg.accept_similarity : null;
+  if (last.announced_id) {
+    chip.dataset.state = 'known';
+    text(chip, `speaking: ${match.best.display_name} ${fmt(match.best.similarity, 2)}`);
+  } else if (match.accepted) {
+    chip.dataset.state = 'pending';
+    text(chip, `confirming ${match.best.display_name} (${last.consecutive})`);
+  } else {
+    chip.dataset.state = 'unknown';
+    text(chip, `unknown voice · best ${match.best.display_name} ` +
+      `${fmt(match.best.similarity, 2)}` +
+      (threshold !== null ? ` < ${fmt(threshold, 2)}` : ''));
+  }
+}
+
+function renderAssess() {
+  const box = $('assess-out');
+  const a = state.assess;
+  if (!a) { box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = '';
+
+  const head = document.createElement('div');
+  head.className = 'assess-head' + (a.fired ? ' hot' : (a.margin >= 0 ? ' near' : ''));
+  head.textContent = a.fired
+    ? `FIRES — ${a.intent_label}`
+    : (a.margin >= 0 ? 'considered, not confirmed' : 'stays quiet');
+  box.appendChild(head);
+
+  const margin = document.createElement('div');
+  margin.className = 'assess-margin';
+  const label = document.createElement('span');
+  label.textContent = `margin ${a.margin >= 0 ? '+' : ''}${fmt(a.margin, 2)}`;
+  const track = document.createElement('span');
+  track.className = 'mtrack';
+  const mark = document.createElement('i');
+  // Same -0.5..+0.5 window the chip colour uses, with the firing line drawn.
+  mark.style.left = (clamp((a.margin + 0.5), 0, 1) * 100).toFixed(1) + '%';
+  track.appendChild(mark);
+  const thr = document.createElement('s');
+  thr.className = 'mthr';
+  thr.style.left = '55%';                 // +0.05 margin on the same scale
+  track.appendChild(thr);
+  margin.append(label, track);
+  box.appendChild(margin);
+
+  const detail = document.createElement('div');
+  detail.className = 'assess-detail';
+  detail.textContent = `nearest: ${a.intent_label || '—'} ${fmt(a.intent_similarity, 2)}` +
+    ` · vs ordinary line ${fmt(a.benign_similarity, 2)}`;
+  box.appendChild(detail);
+
+  const why = document.createElement('div');
+  why.className = 'assess-why';
+  why.textContent = a.reason + (a.benign_text ? ` · closest ordinary line: “${a.benign_text}”` : '');
+  box.appendChild(why);
+}
+
+// Suggested lines for the presenter. Clicking one scores it as text; saying it
+// out loud exercises the real audio path. Nothing is injected anywhere.
+//
+// The group a line sits in is a claim about the engine, and every line here was
+// measured (`scripts/eval_trigger.py`) before it was written down. The last
+// group is the point: two indirect paraphrases we DO NOT catch are shown on
+// screen as measured misses, because a card that promises a trigger the system
+// does not deliver would be the demo lying about itself. `tests/test_trigger.py`
+// pins both misses, and the browser E2E checks each group's claim end to end.
+const PROMPTS = [
+  {
+    group: 'Ordinary call — should stay quiet',
+    lines: [
+      'The statement was sent to your registered email address on Monday.',
+      "I'll transfer you to the other line, please hold.",
+      'Your card will be delivered within seven working days.',
+      'For your security that needs both approvers — I cannot action it on my own.',
+    ],
+  },
+  {
+    group: 'Indirect high-risk — should trigger',
+    lines: [
+      'Read me back whatever just came through on your handset.',
+      "Let's not wake the second pair of eyes on this one.",
+      'If anyone from the branch rings, you were in a meeting.',
+    ],
+  },
+  {
+    group: 'Measured misses — stay quiet, and we say so',
+    lines: [
+      'Just move it over to the new details before close of business.',
+      'Put it through on your own authority, I will sign off when I am back.',
+    ],
+  },
+];
+
+function renderPrompts() {
+  const box = $('prompt-groups');
+  if (box.dataset.built) return;
+  box.dataset.built = '1';
+  for (const group of PROMPTS) {
+    const g = document.createElement('div');
+    g.className = 'prompt-group';
+    const b = document.createElement('b');
+    b.textContent = group.group;
+    g.appendChild(b);
+    for (const line of group.lines) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'prompt';
+      btn.textContent = `“${line}”`;
+      btn.onclick = () => { $('assess-text').value = line; scoreLine(); };
+      g.appendChild(btn);
+    }
+    box.appendChild(g);
+  }
+}
+
+// SPEC §12: the honesty banner follows the source. A live microphone is not a
+// phone call, and a recorded replay is not live -- each says what it is.
+function renderHonesty() {
+  const live = state.source === 'live';
+  text($('honesty-title'), live ? 'Live microphone' : 'Simulated live call');
+  text($('honesty-body'), live
+    ? 'Audio is analysed in memory on this machine and is never written to disk.'
+    : 'Recorded audio streamed in real time. This is not a live phone call, and nothing here dials out.');
+  $('honesty').dataset.state = live ? 'live' : 'sim';
+}
+
+// Each stage in the rail points at the panel that carries its evidence, so the
+// hover text names the destination rather than repeating the stage.
+const STEP_HINT = {
+  trigger: 'Go to the timeline, where the triggers are marked',
+  verify: 'Go to the verdict and how much was verified',
+  challenge: 'Go to the challenge line',
+  evidence: 'Go to the flagged segments',
+};
+
+// The challenge is the only stage that can have no panel to go to.
+const CHALLENGE_ABSENT =
+  'No challenge issued — one is only written when the verdict is Uncertain.';
+
 // The pipeline in the rail is not decoration: each stage shows how many things
 // it actually produced, so "we only verify when triggered" is visible as a
 // number rather than a claim.
@@ -279,22 +636,33 @@ function renderRail() {
   const challengeOn = Boolean(
     state.verdict && state.verdict.state === 'UNCERTAIN' && state.verdict.challenge_prompt);
 
+  // Third field: whether this stage's panel is on screen to go to. Only the
+  // challenge can be absent, and it is read from state rather than from the
+  // panel's own `hidden` -- renderChallenge has not run yet this frame.
   const stages = [
-    ['trigger', c.triggers],
-    ['verify', c.deep],
-    ['challenge', challengeOn ? 1 : 0],
-    ['evidence', c.flagged],
+    ['trigger', c.triggers, true],
+    ['verify', c.deep, true],
+    ['challenge', challengeOn ? 1 : 0, challengeOn],
+    ['evidence', c.flagged, true],
   ];
 
   // "on" is the furthest stage that has produced anything -- where the run got to.
   let furthest = null;
   for (const [name, n] of stages) if (n > 0) furthest = name;
 
-  for (const [name, n] of stages) {
+  for (const [name, n, live] of stages) {
     const step = $(`step-${name}`);
     text($(`ct-${name}`), String(n));
     step.classList.toggle('fired', n > 0);
     step.classList.toggle('on', name === furthest);
+
+    // A stage whose panel is not on screen -- the challenge, which only exists
+    // on an Uncertain verdict -- stops looking clickable and says why on hover.
+    // A button that silently does nothing reads as broken.
+    step.classList.toggle('nolink', !live);
+    step.setAttribute('aria-disabled', live ? 'false' : 'true');
+    const hint = live ? STEP_HINT[name] : CHALLENGE_ABSENT;
+    if (step.title !== hint) step.title = hint;
   }
 }
 
@@ -578,6 +946,20 @@ function renderTranscript() {
       txt.appendChild(detail);
     }
 
+    // The margin chip: what the trigger thought of EVERY line, not only the
+    // ones that fired. This is the "trigger points" view -- a near-miss is
+    // visibly considered, and the tooltip names the intent family it was
+    // closest to and the ordinary line that beat it.
+    const a = u.assessment;
+    if (a && a.min_words_met) {
+      const chip = document.createElement('span');
+      chip.className = 'mchip' + (a.fired ? ' hot' : (a.margin >= 0 ? ' near' : ''));
+      chip.textContent = (a.margin >= 0 ? '+' : '') + fmt(a.margin, 2);
+      chip.title = `${a.intent_label || 'nearest intent'} — ${a.reason}` +
+        (a.benign_text ? `\nclosest ordinary line: “${a.benign_text}”` : '');
+      txt.appendChild(chip);
+    }
+
     line.append(t, txt);
     box.appendChild(line);
   }
@@ -699,6 +1081,7 @@ function renderFooter() {
       `${s.windows_total} windows (${s.windows_scored} scored, ${s.windows_silent} silent, ` +
       `${s.windows_deep} deep) · ${s.utterances} utterances · ${s.triggers} triggers · ` +
       `alerts ${s.alerts} · max lag ${s.max_lag_ms} ms · ` +
+      (s.audio_dropped_ms ? `dropped ${s.audio_dropped_ms} ms of live audio · ` : '') +
       `${s.wall_s}s wall clock for ${s.stream_s}s of audio`);
   } else if (state.running) {
     text($('footer-stats'),
@@ -787,7 +1170,13 @@ function drawTimeline() {
   const plotW = w - pad.l - pad.r;
   const plotH = h - pad.t - pad.b;
   const TOP = 1.28;                       // headroom above 1.00 for the gate label
-  const totalMs = Math.max(1000, (state.durationS || 40) * 1000);
+  // A live call has no known length: the axis grows with the clock so the
+  // playhead stays on screen for as long as the person keeps talking.
+  const totalMs = Math.max(
+    1000,
+    state.live ? Math.max(state.clockMs * 1.15, 30000)
+               : (state.durationS || 40) * 1000,
+  );
   const x = (ms) => pad.l + (ms / totalMs) * plotW;
   const y = (v) => pad.t + (1 - v / TOP) * plotH;
 
@@ -915,6 +1304,11 @@ function frame() {
     renderEvidence();
     renderTimelineHead();
     renderFooter();
+    renderVoices();
+    renderAssess();
+    renderLookup();
+    renderHonesty();
+    renderPrompts();
     drawTimeline();
   }
   requestAnimationFrame(frame);
@@ -953,7 +1347,180 @@ function setMode(mode) {
 $('mode-triggered').onclick = () => setMode('triggered');
 $('mode-always_on').onclick = () => setMode('always_on');
 
+// ---------------------------------------------------------------- source
+function setSource(source) {
+  if (state.running) return;            // changing source mid-run makes no sense
+  state.source = source;
+  touch();
+}
+
+$('src-file').onclick = () => setSource('file');
+$('src-live').onclick = () => setSource('live');
+$('speaker').onchange = () => { state.speaker = $('speaker').value; touch(); };
+
+// ---------------------------------------------------------------- voices
+async function refreshVoices() {
+  try {
+    const data = await (await fetch('/voices')).json();
+    state.voices = data.voices || [];
+    touch();
+  } catch (err) { /* the events socket will bring /hello with the list */ }
+}
+
+async function deleteVoice(speakerId) {
+  try {
+    const response = await fetch(`/voices/${encodeURIComponent(speakerId)}`, {
+      method: 'DELETE',
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'delete failed');
+    state.voices = data.voices || [];
+    if (state.speaker === speakerId) {
+      state.speaker = state.voices.length ? state.voices[0].speaker_id : '';
+    }
+  } catch (err) {
+    state.error = err.message;
+  }
+  touch();
+}
+
+$('voice-record').onclick = async () => {
+  if (state.running || state.liveUi.recording) return;
+  const status = $('voice-status');
+  state.liveUi.recording = true;
+  state.error = null;
+  touch();
+  try {
+    const result = await SentinelLive.record(10, {
+      onTick: (elapsed, total) => {
+        text(status, `recording… ${Math.max(0, Math.ceil(total - elapsed))}s left`);
+        touch();
+      },
+    });
+    if (!result) throw new Error('recording cancelled');
+    // Release the microphone before asking for a name: leaving the browser's
+    // recording indicator on while a text box is up looks like spyware.
+    await SentinelLive.release();
+
+    const name = (window.prompt('Name this voice', 'Coordinator') || '').trim();
+    if (!name) throw new Error('a name is required');
+    text(status, 'saving…');
+    const response = await fetch('/voices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        display_name: name,
+        sample_rate: result.sampleRate,
+        pcm_int16_b64: SentinelLive.toInt16Base64(result.pcm),
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'enrolment failed');
+    state.voices = data.voices || [];
+    const meta = data.meta || {};
+    if (meta.speaker_id) state.speaker = meta.speaker_id;
+    text(status, `saved ${meta.speaker_id} · ${meta.embedding_dim}-dim`);
+  } catch (err) {
+    state.error = err.message;
+    text(status, err.message);
+    try { await SentinelLive.release(); } catch (e) { /* already released */ }
+  } finally {
+    state.liveUi.recording = false;
+    touch();
+  }
+};
+
+// ---------------------------------------------------------------- try a line
+async function scoreLine() {
+  const input = $('assess-text');
+  const value = (input.value || '').trim();
+  if (!value) return;
+  text($('assess-note'), 'scoring…');
+  try {
+    const response = await fetch('/assess', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: value }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'scoring failed');
+    state.assess = data.assessment;
+    text($('assess-note'), 'text only — no audio claim');
+  } catch (err) {
+    state.error = err.message;
+    text($('assess-note'), err.message);
+  }
+  touch();
+}
+
+$('assess-go').onclick = scoreLine;
+$('assess-text').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') scoreLine();
+});
+
+// ---------------------------------------------------------------- rail nav
+// Clicking a pipeline stage goes to the panel that holds its evidence and rings
+// that panel for a moment. The ring is the point: on a wide screen every panel
+// is already visible, so a scroll alone would look like nothing happened.
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+let ringTimer = null;
+
+function ring(el, className, ms) {
+  clearTimeout(ringTimer);
+  for (const stale of document.querySelectorAll('.flash, .nudge')) {
+    stale.classList.remove('flash', 'nudge');
+  }
+  void el.offsetWidth;               // restart it when the same thing is clicked twice
+  el.classList.add(className);
+  ringTimer = setTimeout(() => el.classList.remove(className), ms);
+}
+
+for (const step of document.querySelectorAll('.step')) {
+  step.onclick = () => {
+    const panel = $(step.dataset.panel);
+    if (!panel || panel.hidden) { ring(step, 'nudge', 400); return; }
+    panel.scrollIntoView({
+      behavior: reduceMotion.matches ? 'auto' : 'smooth',
+      block: 'nearest',
+    });
+    ring(panel, 'flash', 1400);
+  };
+}
+
 $('run').onclick = async () => {
+  if (state.source === 'live') {
+    // Live: open the microphone, then the socket. The server starts the run on
+    // the socket's `start` message and events arrive over /stream as usual.
+    state.running = true;
+    state.error = null;
+    state.liveUi.silent = false;
+    state.liveUi.level = 0;
+    touch();
+    const started = await SentinelLive.start({
+      mode: selectedMode,
+      speaker: state.speaker || null,
+      noAudioWarnMs: (state.liveCfg && state.liveCfg.no_audio_warn_ms) || 700,
+      onLevel: (level) => { state.liveUi.level = level; touch(); },
+      onState: (update) => {
+        if (update.running === false) state.running = false;
+        if (update.silent === true) state.liveUi.silent = true;
+        if (update.silent === false) state.liveUi.silent = false;
+        touch();
+      },
+      onError: (message) => {
+        state.running = false;
+        state.error = message;
+        // The server may have started a run before capture failed. Stop it.
+        fetch('/stop', { method: 'POST' });
+        touch();
+      },
+    });
+    if (!started) state.running = false;
+    touch();
+    return;
+  }
+
   state.running = true;
   touch();
   const response = await fetch('/start', {
@@ -972,7 +1539,13 @@ $('run').onclick = async () => {
   }
 };
 
-$('stop').onclick = () => fetch('/stop', { method: 'POST' });
+$('stop').onclick = () => {
+  // Live runs have two things to stop: the capture in the browser and the
+  // pipeline on the server. Closing the socket ends the source; POST /stop
+  // joins the thread. Doing both makes either one sufficient.
+  if (state.source === 'live' || state.live) SentinelLive.stop('stopped by operator');
+  fetch('/stop', { method: 'POST' });
+};
 
 // ---------------------------------------------------------------- theme
 // The choice is remembered; with no choice made, the OS decides.

@@ -170,7 +170,12 @@ body{
 .step{
   display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-pill);
   color:var(--dt2);font-size:13.5px;font-weight:500;transition:background .15s,color .15s;
+  /* a button, so reset one: the rail owns the look, not the UA stylesheet */
+  width:100%;text-align:left;border:none;background:none;cursor:pointer;
+  font-family:var(--sans);line-height:1.5;margin:0;-webkit-appearance:none;appearance:none;
 }
+.step:hover{background:var(--rail-ct);color:var(--dt1)}
+.step:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
 .step svg{width:18px;height:18px;flex:none;opacity:.8}
 .step .ct{
   margin-left:auto;font-size:11px;font-weight:700;min-width:22px;height:22px;
@@ -185,6 +190,23 @@ body{
 .step.fired .ct{background:var(--lime);color:#17191c}
 #step-trigger.fired .ct,
 #step-evidence.fired .ct{background:var(--coral);color:#fff}
+
+/* A stage with no panel to go to stops advertising a destination it does not
+   have. Clicking it still answers -- see .nudge -- rather than sitting mute. */
+.step.nolink{cursor:default;opacity:.5}
+.step.nolink:hover{background:none;color:var(--dt2)}
+.step.nudge{background:var(--rail-ct);animation:step-nudge .4s ease-in-out}
+@keyframes step-nudge{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(3px)}
+  75%{transform:translateX(-3px)}
+}
+
+/* Where a rail click lands. Held as a plain outline, removed on a timer, so it
+   survives prefers-reduced-motion killing every animation on the page. Not
+   coral: a ring around the verdict must not read as a risk signal. */
+.flash{outline:2px solid var(--lime-ink);outline-offset:3px}
+.card.dark.flash{outline-color:var(--lime)}
 
 /* call picker */
 .select-wrap{position:relative}
@@ -324,6 +346,22 @@ body{
 .alerts[data-state="alarming"]{background:var(--coral-wash);border-color:var(--coral-line)}
 .alerts[data-state="alarming"] .n,.alerts[data-state="alarming"] .fa-label{color:var(--coral-ink)}
 .alerts[data-state="alarming"] .fa-label small{color:var(--coral-body)}
+
+/* Both modes at once, on the same call. The two numbers carry the colour; the
+   panel behind them stays neutral, because one good reading and one bad one do
+   not add up to a verdict on the panel as a whole. */
+.fa-single,.fa-compare{display:flex;align-items:center;gap:11px}
+.fa-compare .cmp{
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  min-width:46px;padding:3px 9px;border-radius:var(--r-in);background:var(--card);
+}
+.fa-compare .cmp b{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.04em;line-height:1.05;color:var(--t3)}
+.fa-compare .cmp i{font-style:normal;font-size:8.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--t3)}
+.fa-compare .cmp.ok b{color:var(--lime-ink)}
+.fa-compare .cmp.bad b{color:var(--coral-ink)}
+/* which side is the run currently on screen */
+.fa-compare .cmp.live{box-shadow:inset 0 0 0 1.5px var(--chip-2)}
+.fa-compare .cmp.live i{color:var(--t2)}
 
 /* ──────────────────────────────────────────────────────── the cards ──── */
 .card{background:var(--card);border-radius:var(--r-card);padding:16px 18px 18px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;overflow:hidden}
@@ -561,3 +599,111 @@ table.segments td.risk span{position:relative}
 @media (prefers-reduced-motion:reduce){
   *{animation:none !important;transition:none !important}
 }
+
+/* ══════════════════════════════════════════════ the live path (PLAN-LIVE) ══
+   New controls, in the same visual language as the rest of the rail. The
+   colour discipline holds: lime is a measurement (mic level, voice match),
+   amber is honesty (no audio, considered-not-confirmed), coral is a decision
+   (a trigger, an unknown voice against the threshold).
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* The rail now carries voices and try-a-line as well as the call controls. On
+   a short screen it scrolls rather than pushing Run off the bottom. */
+.rail{overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 54px);scrollbar-width:thin}
+
+/* the live speaker picker matches the call picker */
+#speaker{
+  -webkit-appearance:none;appearance:none;width:100%;
+  font-family:var(--sans);font-size:12.5px;line-height:1.3;
+  padding:10px 32px 10px 13px;border-radius:var(--r-in);
+  background:var(--rail-field);border:1px solid var(--rail-line);color:var(--dt1);
+  cursor:pointer;
+}
+#speaker option{background:var(--shell);color:var(--dt1)}
+#demo:disabled,#speaker:disabled{opacity:.45;cursor:default}
+
+.mic-row{display:flex;align-items:center;gap:8px;padding:10px 8px 0}
+.mic-dot{width:9px;height:9px;border-radius:50%;background:var(--dt3);flex:none}
+.mic-dot[data-state="on"]{background:var(--lime);animation:pulse 1.6s ease-in-out infinite}
+.mic-dot[data-state="rec"]{background:var(--coral);animation:pulse .8s ease-in-out infinite}
+.mic-dot[data-state="silent"]{background:var(--amber)}
+.mic-bar{flex:1;height:5px;border-radius:var(--r-pill);background:var(--rail-ct);overflow:hidden}
+.mic-bar i{display:block;height:100%;width:0;background:var(--lime);transition:width .08s linear}
+.mic-note{font-size:10.5px;color:var(--dt3);white-space:nowrap}
+
+.voice-actions{display:flex;align-items:center;gap:8px;margin-top:8px}
+.btn-thin{
+  flex:none;padding:8px 12px;font-size:12.5px;font-weight:600;font-family:var(--sans);
+  background:var(--rail-field);border:1px solid var(--rail-line);color:var(--dt1);
+  border-radius:var(--r-in);cursor:pointer;transition:.15s;
+}
+.btn-thin:hover{background:var(--rail-hover)}
+.btn-thin:disabled{opacity:.4;cursor:default}
+.voice-status{
+  font-size:10.5px;color:var(--dt3);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.voices{display:flex;flex-direction:column;gap:4px}
+.voice{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;min-width:0;
+  border-radius:var(--r-in);background:var(--rail-field);border:1px solid var(--rail-line);
+}
+.voice b{font-size:12.5px;color:var(--dt1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voice .vmeta{font-family:var(--mono);font-size:9.8px;color:var(--dt3);margin-left:auto;white-space:nowrap}
+.voice .vdel{
+  border:none;background:none;color:var(--dt3);font-size:15px;line-height:1;
+  cursor:pointer;padding:2px 5px;border-radius:7px;
+}
+.voice .vdel:hover{color:var(--coral);background:var(--rail-hover)}
+.tiny{margin:8px 8px 0;font-size:10.6px;line-height:1.45;color:var(--dt3)}
+
+.line-input{
+  box-sizing:border-box;width:100%;font-family:var(--sans);font-size:12.5px;
+  padding:10px 12px;border-radius:var(--r-in);background:var(--rail-field);
+  border:1px solid var(--rail-line);color:var(--dt1);
+}
+.line-input::placeholder{color:var(--dt3)}
+.line-input:focus{outline:2px solid var(--lime);outline-offset:1px}
+
+.assess-out{margin-top:9px;padding:10px 11px;border-radius:var(--r-in);background:var(--rail-field);border:1px solid var(--rail-line)}
+.assess-head{font-size:11.5px;font-weight:700;color:var(--dt2)}
+.assess-head.near{color:var(--amber)}
+.assess-head.hot{color:var(--coral)}
+.assess-margin{display:flex;align-items:center;gap:8px;margin-top:7px;font-family:var(--mono);font-size:10.3px;color:var(--dt2)}
+.mtrack{position:relative;flex:1;height:5px;border-radius:var(--r-pill);background:var(--rail-ct)}
+.mtrack i{position:absolute;top:-3px;width:10px;height:10px;border-radius:50%;background:var(--lime);transform:translateX(-50%)}
+.mtrack .mthr{position:absolute;top:-2px;width:1px;height:9px;background:var(--coral)}
+.assess-detail{margin-top:7px;font-size:10.6px;line-height:1.45;color:var(--dt2)}
+.assess-why{margin-top:4px;font-size:10.6px;line-height:1.45;color:var(--dt3)}
+
+.prompts summary{cursor:pointer;list-style:none}
+.prompts summary::-webkit-details-marker{display:none}
+.prompts summary::after{content:' +';color:var(--dt3)}
+.prompts[open] summary::after{content:' –'}
+.prompt-group{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.prompt-group b{font-size:10.5px;color:var(--dt2);font-weight:700}
+.prompt{
+  text-align:left;font-family:var(--sans);font-size:11.6px;line-height:1.4;
+  padding:8px 10px;border-radius:var(--r-in);background:var(--rail-field);
+  border:1px solid var(--rail-line);color:var(--dt2);cursor:pointer;transition:.15s;
+}
+.prompt:hover{background:var(--rail-hover);color:var(--dt1)}
+
+/* the transcript's per-utterance margin chip */
+.mchip{
+  font-family:var(--mono);font-size:10px;color:var(--t3);
+  background:var(--chip);border-radius:var(--r-pill);padding:2px 7px;margin-left:7px;
+  white-space:nowrap;
+}
+.mchip.near{background:var(--amber-chip);color:var(--amber-ink)}
+.mchip.hot{background:var(--coral-chip);color:var(--coral-ink)}
+
+/* the lookup chip in the top bar */
+#chip-lookup[data-state="known"]{background:var(--lime-wash);color:var(--lime-ink)}
+#chip-lookup[data-state="pending"]{background:var(--amber-wash);color:var(--amber-ink)}
+#chip-lookup[data-state="unknown"]{background:var(--coral-wash);color:var(--coral-ink)}
+
+/* the honesty banner follows the source: a live mic is not a phone call */
+.honesty[data-state="live"]{background:var(--coral);color:#fff}
+.honesty[data-state="live"] p{color:#ffd9d1}
+.honesty[data-state="live"] .dot{background:#fff}
