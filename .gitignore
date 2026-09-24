@@ -22,6 +22,12 @@ prototype/artifacts/clones/*.aiff
 # Runtime logs
 prototype/artifacts/evidence/*.jsonl
 
+# Voice fingerprints are runtime state. The demo speaker's enrolment is shipped
+# so the demo runs out of the box; anyone else's stays out of the repository --
+# that includes the presenter's own, enrolled live while testing a dry run.
+prototype/artifacts/enrolments/*
+!prototype/artifacts/enrolments/LA_0022.*
+
 # Large binaries that live outside the build
 *.pptx
 *.pdf
