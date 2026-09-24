@@ -268,6 +268,9 @@ def drive_recorded_call(page, report: Report, shot) -> str:
     # for a recorded run. The live run later asserts the opposite.
     report.step("recorded run discloses the scripted overlay",
                 page.is_visible("#overlay-note"))
+    note = text_of(page, "#fa-note")
+    report.step("the recorded attack's alerts name their ground truth",
+                "spoof" in note, note)
     shot("recorded-verdict")
     return verdict
 
@@ -368,6 +371,11 @@ def drive_live_run(page, report: Report, shot, expect: str,
                 not page.is_visible("#overlay-note"))
     report.step("pipeline lag stays under the warn line",
                 not page.is_visible("#chip-lag"))
+    # SPEC §12: a live run has no ground truth, and the alert counter must not
+    # pretend otherwise.
+    note = text_of(page, "#fa-note")
+    report.step("a live run does not claim a ground truth",
+                "no ground truth" in note, note)
 
     shot(f"live-{expect}")
     page.click("#stop")

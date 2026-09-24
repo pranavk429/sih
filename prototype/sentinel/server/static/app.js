@@ -363,9 +363,17 @@ function renderControls() {
       ? 'naive mode: every window over threshold'
       : 'Sentinel mode: nothing scored until a trigger');
     box.dataset.state = count > 0 ? 'alarming' : (state.running || state.final ? 'clean' : 'idle');
-  } else {
+  } else if (state.groundTruth === 'spoof') {
     label.firstChild.textContent = 'alerts';
     text(note, 'ground truth: spoof — these are true positives');
+    box.dataset.state = count > 0 ? 'alarming' : 'idle';
+  } else {
+    // Live microphone. There is no ground truth to judge an alert against, so
+    // the panel says exactly that: calling these "true positives" would invent
+    // a fact about a call nobody knows the truth of (SPEC §12). The count is
+    // still shown -- it is just not scored.
+    label.firstChild.textContent = 'alerts';
+    text(note, 'live audio — no ground truth; an alert is not a verdict');
     box.dataset.state = count > 0 ? 'alarming' : 'idle';
   }
 }
